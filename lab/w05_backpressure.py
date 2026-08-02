@@ -51,8 +51,8 @@ for label, tool in (("verbose (dump all)", verbose_tests), ("silent on success",
     print(f"  {label:<22} context after one green run: {h.context_chars():>8,} chars")
 
 print("""
-  Same information content — 'everything passed' — at a ~500x difference in
-  context cost. HumanLayer's reported failure: 4,000 lines of passing tests
+  Same information content — 'everything passed' — at a 112x difference in
+  context cost (10,011 vs 89 chars). HumanLayer's reported failure: 4,000 lines of passing tests
   flooded the window and the agent started hallucinating about files it had
   just read. Success must be silent.
 

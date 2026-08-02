@@ -11,6 +11,8 @@ The sharpest available evidence for the size of this effect comes from Terminal 
 
 ---
 
+![Harness Engineering — syllabus](https://raw.githubusercontent.com/Premansh12/harness-engineering/main/assets/hero.png)
+
 ## Contents
 
 **18 lesson pages** in editorial-styled HTML · **15 runnable walkthroughs** · **scored quizzes with a progress scoreboard** · **annotated source map**

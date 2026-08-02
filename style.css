@@ -41,6 +41,15 @@ header.masthead {
   padding: 34px 0 26px;
 }
 
+img.hero {
+  display: block;
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto 8px;
+  border-radius: 14px;
+  border: 1px solid var(--rule);
+}
+
 .kicker {
   font-size: 11px;
   letter-spacing: 0.22em;

@@ -13,10 +13,13 @@
   <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 14 · Research</p>
   <h1>Self-evolving harnesses</h1>
   <p class="standfirst">The frontier: harnesses that improve themselves from their own run traces. Two 2026 papers — Agentic Harness Engineering and HarnessX — show evolvable harnesses beating hand-designed ones. This is the stability/adaptability tension (Module 10) resolved in favour of adaptability, with observability as the engine.</p>
-  <p class="meta"><span>Reading + diagram + quiz</span><span>no walkthrough</span><span>50 min</span><span>Compiled by Premansh Panigrahi</span></p>
+  <p class="meta"><span>Reading + diagram + walkthrough + quiz</span><span>lab/w14_self_evolving.py</span><span>50 min</span><span>Compiled by Premansh Panigrahi</span></p>
 </header>
 
 <h2><span class="num">Section 1</span>The problem with manual harness engineering</h2>
+
+<div class="filename">terminal</div>
+<pre><code>python3 lab/w14_self_evolving.py</code></pre>
 
 <p>Lin et al. (Agentic Harness Engineering, arXiv:2604.25850) open with why automation is hard: a <strong>heterogeneous action space</strong> across editable components, <strong>voluminous trajectories</strong> that bury signal, and <strong>edits whose effect is hard to attribute</strong>. You tweak a tool, run the agent, get a different number — but which part of the change caused it? Manual iteration drowns in exactly the noise Module 08 warned about.</p>
 

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · Tools, bash, and the context tax</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 02</p>
+  <h1>Tools, bash, and the context tax</h1>
+  <p class="standfirst">Every tool you add is charged against the model's attention on every turn, before it reads your task. This module counts that cost in characters, then gives you the two moves that reduce it: bash instead of bespoke tools, and CLI instead of MCP.</p>
+  <p class="meta"><span>Walkthrough</span><span>lab/w02_tools.py</span><span>45 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The filesystem is the foundational primitive</h2>
+
+<p>Trivedy's derivation starts here and it is the right place. Models operate only on what is in context. Before filesystems, that meant copy-pasting into a chat window — clunky for a human and impossible for an autonomous agent. The solution was available and already deeply represented in the training data:</p>
+
+<blockquote>The world was already using filesystems to do work, so models were naturally trained on billions of tokens of how to use them.<cite>Vivek Trivedy</cite></blockquote>
+
+<p>What the filesystem unlocks, in order of how much it matters:</p>
+
+<ul>
+<li><strong>Offloading.</strong> Work can be written down instead of held in the window. This is the mechanism behind every context strategy in Module 03.</li>
+<li><strong>Persistence.</strong> State outlasts a session. This is what makes Module 04's handoff possible at all.</li>
+<li><strong>Collaboration.</strong> Multiple agents and humans coordinate through shared files. Anthropic's three-agent harness passes everything this way — one agent writes a file, another reads it and responds in the same file or a new one.</li>
+<li><strong>Versioning</strong>, once you add git: track progress, roll back errors, branch experiments.</li>
+</ul>
+
+<p>Nearly every other harness primitive ends up pointing at the filesystem for something. If you are designing from scratch, give the agent a workspace before you give it anything else.</p>
+
+<div class="box walk">
+  <span class="label">Run it</span>
+  <div class="filename">terminal</div>
+  <pre><code>python3 lab/w02_tools.py</code></pre>
+  <p>Section 1 writes a file, verifies it with <code>wc -l</code>, and reads it back — the write/verify/read cycle that every coding agent runs thousands of times. Note that verification uses a different tool than the write did. An agent that verifies with the same mechanism it wrote with is not verifying.</p>
+</div>
+
+<h2><span class="num">Section 2</span>Bash: the tool that removes the need for tools</h2>
+
+<p>A harness can only execute the tools it has logic for. That gives you two strategies. You can try to anticipate every action the agent might need and build a tool for each — an infinite and losing task. Or you can give it bash.</p>
+
+<blockquote>It's the difference between teaching someone to use a single kitchen gadget and handing them a kitchen.<cite>Addy Osmani, on bash + code execution</cite></blockquote>
+
+<p>The model designs its own tools on the fly by writing code, rather than being confined to a fixed inventory. Willison's observation is that most tasks collapse into a few well-chosen CLI invocations anyway, and models are extremely good at shell commands because the training data is saturated with them.</p>
+
+<p>Harnesses still ship focused tools. But bash plus code execution has become the default general-purpose strategy, and if you find yourself writing your fifteenth bespoke tool, ask whether a CLI already does it.</p>
+
+<h3>The allow-list, and why refusals must be readable</h3>
+
+<div class="filename">lab/harness_lab.py · make_bash_tool</div>
+<pre><code>def bash(cmd, **_):
+    prog = shlex.split(cmd)[0] if cmd.strip() else ""
+    if prog not in allow:
+        return f"BLOCKED: '{prog}' is not on the allow-list {sorted(allow)}"
+    ...</code></pre>
+
+<p>Section 2 of the walkthrough sends <code>rm -rf /</code> through this. It is refused, and — the part that matters — the refusal comes back as a string the model reads, so it adapts and continues with the safe command. Compare to a silent failure, where the agent has no idea what happened and retries in circles.</p>
+
+<p>This is the same principle as error-as-observation from Module 01. State it once, generally: <strong>a harness control that is enforced but not legible produces a confused agent; a control that is legible produces an adaptive one.</strong></p>
+
+<h2><span class="num">Section 3</span>Counting the tool tax</h2>
+
+<p>Here is the measurement almost nobody makes. Tool descriptions and schemas are injected into context on every turn. Real numbers from the walkthrough, using deliberately ordinary descriptions of about 120 characters each:</p>
+
+<div class="filename">real output · lab/w02_tools.py</div>
+<pre><code> tools    context chars    ~tokens
+     4              864        216
+    12            2,598        649
+    30            6,540      1,635
+    60           13,110      3,277
+   120           26,310      6,577</code></pre>
+
+<div class="box evidence">
+  <span class="label">Read this carefully</span>
+  <p>120 tools is roughly what you get from six or seven chatty MCP servers. That is <strong>~6,600 tokens spent before the agent reads your task</strong>, on every turn, charged against the same attention budget the actual work needs. The character counts above are exact for the synthetic tools in the script; treat the token figures as a ÷4 approximation. Your real numbers depend on how verbose your descriptions are — which is the point. <strong>Go measure yours.</strong></p>
+</div>
+
+<p>This is the mechanism behind the widely-reported "too many MCP servers makes the agent dumber". It is not folklore and it is not mysterious. It is arithmetic plus context rot: you are spending window on things the current task does not need, and everything you spend degrades attention on everything else.</p>
+
+<h3>Progressive disclosure</h3>
+
+<p>The counter-pattern, and the reason skills exist as a harness primitive:</p>
+
+<blockquote>Skills address the issue of too many tools or MCP servers loaded into context on agent start, which degrades performance before the agent can start working. Skills are a harness-level primitive that solve this via progressive disclosure.<cite>Vivek Trivedy</cite></blockquote>
+
+<p>Ship a short index — name and one-line description. Load the full instructions, schemas, and examples only when the task actually calls for that skill. The agent did not choose to have every tool's front-matter loaded at startup; the harness can choose not to do that to it.</p>
+
+<h2><span class="num">Section 4</span>CLI over MCP, when the CLI is in the training data</h2>
+
+<p>HumanLayer's field report is the strongest practical guidance available on this, and it reduces to a decision rule:</p>
+
+<table>
+<tr><th>Question</th><th>Answer</th></tr>
+<tr><td>Does a well-known CLI already do this? (<code>git</code>, <code>gh</code>, <code>docker</code>, <code>psql</code>, <code>jq</code>, <code>kubectl</code>)</td><td><strong>Use the CLI.</strong> Zero tool-description tax, composable with pipes and grep, and the model already knows the syntax from pretraining.</td></tr>
+<tr><td>Is it bespoke to your system?</td><td><strong>Write a thin tool.</strong> Return the smallest useful payload — not the full API response.</td></tr>
+</table>
+
+<p>Their reported result: they replaced the Linear MCP server with a short CLI section in <code>CLAUDE.md</code> and got better outcomes for less context. The mechanism is not subtle — an MCP server pays a per-turn description cost for capability the model could have invoked through a binary it already understands.</p>
+
+<div class="box warn">
+  <span class="label">Where this rule stops applying</span>
+  <p>MCP earns its cost when the tool needs to be discoverable by an agent you did not configure, when it needs auth the CLI cannot carry safely, or when there is no CLI and you would be shipping one just for this. The rule is "prefer the CLI when the CLI is already known", not "MCP is bad".</p>
+</div>
+
+<h3>Tool output is the other half of the tax</h3>
+
+<p>Tool <em>descriptions</em> cost on every turn. Tool <em>outputs</em> cost once but arrive much larger. A 2,000-line log file, a full API response, a passing test suite — these flood the window with tokens that carry almost no signal. Two mitigations, both harness-level:</p>
+
+<ul>
+<li><strong>Truncate with a pointer.</strong> Keep head and tail above a threshold; offload the middle to a file the agent can read on demand. That is <code>max_tool_chars</code> in the lab harness.</li>
+<li><strong>Design the payload.</strong> Do not return what the API gave you. Return what the agent needs. Module 05 takes this to its conclusion: on success, return nothing at all.</li>
+</ul>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>Add a tool with a 2,000-character description. Re-run section 3. How many such tools before you have spent 10% of a 200k window on descriptions alone?</li>
+    <li>Count your own. Dump your actual tool inventory to JSON and measure it. Most people are surprised.</li>
+    <li>Add <code>git</code> to the allow-list. Does the harness now permit <code>git push --force</code>? Write the <code>approve()</code> callback that permits <code>git</code> but refuses force-push and refuses pushes to <code>main</code>.</li>
+    <li>Take your three least-used tools. For each, write the one-line CLI invocation that replaces it. If you can, delete the tool.</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="01-the-loop.html">← Module 01</a>
+  <a class="to-right" href="03-context-rot.html">Module 03 — Context rot →</a>
+</div>
+
+</div>
+</body>
+</html>

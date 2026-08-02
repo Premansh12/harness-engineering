@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harness Engineering — a course</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker">A self-paced course · compiled 02 August 2026</p>
+  <h1>Harness Engineering</h1>
+  <p class="standfirst">The model is one input. Everything else — the loop, the tools, the context policy, the state, the verification, the sandbox — is yours. That surface area is where most of the leverage in agent work now sits, and it has almost no textbook.</p>
+  <p class="meta"><span>10 modules</span><span>8 runnable walkthroughs</span><span>~6 hours</span><span>zero API spend</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2>Why this exists</h2>
+
+<p>For two years the public conversation about AI engineering has been about models: which one is smartest, which hallucinates less, what happens at the next checkpoint. That conversation is fine as far as it goes, and it is missing the other half of the system.</p>
+
+<blockquote>Agent = Model + Harness. If you're not the model, you're the harness.
+<cite>Vivek Trivedy, <em>The Anatomy of an Agent Harness</em>, March 2026</cite></blockquote>
+
+<p>The sharpest available evidence for how large this effect is comes from Terminal Bench 2.0. The same Claude Opus 4.6 weights place roughly <strong>#33 running inside Claude Code and roughly #5 running inside a custom harness</strong>. Nothing about the model changed. What changed was the tools, the prompt, the feedback signals, and the loop. Viv Trivedy's team moved an agent from Top 30 to Top 5 by editing only the harness.</p>
+
+<p>That gap is the subject of this course.</p>
+
+<div class="box warn">
+  <span class="label">How to read the claims here</span>
+  <p>Harness engineering is about eighteen months old as a named discipline and the literature is thin. Most of what follows is <strong>practitioner field-report</strong>, not controlled study. Where a claim comes from a measured result I say so and give the number. Where it is a working heuristic that has not been isolated, I flag it. Treat the second category as a hypothesis you should ablate in your own setup — Module 09 teaches you how.</p>
+</div>
+
+<h2>What you will be able to do</h2>
+
+<ul>
+<li>Name every component of a harness and state which behaviour each one exists to deliver — and delete the ones that cannot answer that question.</li>
+<li>Measure the context cost of your own tool inventory, verification signals, and subagent topology, in characters, rather than guessing.</li>
+<li>Design handoff artifacts that survive a context reset without the next agent quietly declaring victory.</li>
+<li>Build back-pressure that is deterministic — signals the model cannot reason its way past.</li>
+<li>Reason correctly about credential isolation under prompt injection, where "the model probably won't do that" is not a control.</li>
+<li>Run an ablation, read the table, and delete harness code that a model upgrade has made redundant.</li>
+</ul>
+
+<h2>How the walkthroughs work</h2>
+
+<p>Every module ships with a script under <code>lab/</code>. They run against a <code>FakeModel</code> that replays a scripted trajectory, so each one is deterministic, offline, free, and finishes in under a second. You are studying the harness, not the model — a scripted model is the correct instrument, because it holds the only variable you are not testing perfectly constant.</p>
+
+<div class="filename">terminal</div>
+<pre><code>cd ~/harness-engineering
+python3 lab/w01_loop.py</code></pre>
+
+<p>Python 3 standard library only. No install, no key, no network. At the end of Module 10 you swap the fake model for a real one by implementing a single method.</p>
+
+<hr>
+
+<h2>The syllabus</h2>
+
+<a class="module" href="lessons/00-what-is-a-harness.html">
+  <div class="m-num">MODULE 00</div>
+  <div class="m-title">What a harness actually is</div>
+  <p class="m-desc">The definition, the four-layer stack, the inner/outer distinction, and how harness engineering relates to context engineering and prompt engineering. Terminology first, because the field's is a mess.</p>
+  <div class="m-tags"><b>no walkthrough</b> · reading · 25 min</div>
+</a>
+
+<a class="module" href="lessons/01-the-loop.html">
+  <div class="m-num">MODULE 01</div>
+  <div class="m-title">The loop is the agent</div>
+  <p class="m-desc">Build an agent in twelve lines, then break it three ways. Stop conditions, error recovery, and why the loop's failure modes — not its structure — are the entire engineering problem.</p>
+  <div class="m-tags"><b>lab/w01_loop.py</b> · 40 min</div>
+</a>
+
+<a class="module" href="lessons/02-tools-and-context-tax.html">
+  <div class="m-num">MODULE 02</div>
+  <div class="m-title">Tools, bash, and the context tax</div>
+  <p class="m-desc">The filesystem as foundational primitive; bash as the general-purpose tool; and a measured table of what a crowded toolbelt costs you before the agent reads your task. CLI-over-MCP as a decision rule.</p>
+  <div class="m-tags"><b>lab/w02_tools.py</b> · 45 min</div>
+</a>
+
+<a class="module" href="lessons/03-context-rot.html">
+  <div class="m-num">MODULE 03</div>
+  <div class="m-title">Context rot and what to do about it</div>
+  <p class="m-desc">Three policies — none, compaction, offload — run against one trajectory, with the needle test that shows what each destroys. Write / select / compress / isolate as the taxonomy.</p>
+  <div class="m-tags"><b>lab/w03_context.py</b> · 50 min</div>
+</a>
+
+<a class="module" href="lessons/04-state-and-handoff.html">
+  <div class="m-num">MODULE 04</div>
+  <div class="m-title">State, memory, and the shift change</div>
+  <p class="m-desc">Compaction versus context reset. Initializer agents, structured handoff artifacts, and the documented failure where a later agent sees progress and declares the job complete. Why JSON beats markdown here.</p>
+  <div class="m-tags"><b>lab/w04_handoff.py</b> · 50 min</div>
+</a>
+
+<a class="module" href="lessons/05-verification.html">
+  <div class="m-num">MODULE 05</div>
+  <div class="m-title">Back-pressure: silent success, loud failure</div>
+  <p class="m-desc">The measured 112x difference between a verbose and a silent green test run. Guides versus sensors, computational versus inferential. Why an agent cannot grade its own work, and what to do instead.</p>
+  <div class="m-tags"><b>lab/w05_backpressure.py</b> · 55 min</div>
+</a>
+
+<a class="module" href="lessons/06-long-horizon.html">
+  <div class="m-num">MODULE 06</div>
+  <div class="m-title">Long horizons: subagents and loops</div>
+  <p class="m-desc">Subagents as a context firewall, measured at 96% parent-context reduction. The Ralph loop and its three requirements. Where harness engineering ends and loop engineering begins.</p>
+  <div class="m-tags"><b>lab/w06_subagents.py</b> · 50 min</div>
+</a>
+
+<a class="module" href="lessons/07-safety-and-sandboxing.html">
+  <div class="m-num">MODULE 07</div>
+  <div class="m-title">Permissions, sandboxes, blast radius</div>
+  <p class="m-desc">Prompt injection as an architecture problem rather than a prompting problem. Anthropic's pets-to-cattle refactor: why the harness left the container, and how a credential proxy keeps tokens out of the agent's reach.</p>
+  <div class="m-tags"><b>lab/w07_safety.py</b> · 45 min</div>
+</a>
+
+<a class="module" href="lessons/08-evaluation.html">
+  <div class="m-num">MODULE 08</div>
+  <div class="m-title">Evaluating harnesses honestly</div>
+  <p class="m-desc">Harness sensitivity as a confound in every published agent number. The HarnessCard reporting standard, the six capabilities framing, and why n=1 agent runs are anecdotes.</p>
+  <div class="m-tags">reading + <b>lab/w08_ablation.py</b> · 45 min</div>
+</a>
+
+<a class="module" href="lessons/09-ablation-and-restraint.html">
+  <div class="m-num">MODULE 09</div>
+  <div class="m-title">Ablation, and the discipline of deleting</div>
+  <p class="m-desc">Every harness component encodes an assumption about what the model cannot do. Those assumptions go stale. The ablation table, the bitter-lesson argument, and the capstone: build a harness, then remove half of it.</p>
+  <div class="m-tags"><b>lab/w08_ablation.py</b> + capstone · 60 min</div>
+</a>
+
+<a class="module" href="sources.html">
+  <div class="m-num">APPENDIX</div>
+  <div class="m-title">The source map</div>
+  <p class="m-desc">Every primary source this course was compiled from, annotated: what it is, why it matters, what to read it for, and how much weight its claims can carry.</p>
+  <div class="m-tags">reference</div>
+</a>
+
+<hr>
+
+<h2>Suggested path</h2>
+
+<table>
+<tr><th>If you have</th><th>Do this</th></tr>
+<tr><td><strong>One evening</strong></td><td>Modules 00, 01, 03, 05. That is the definition, the loop, context, and verification — the load-bearing quarter.</td></tr>
+<tr><td><strong>A weekend</strong></td><td>All ten in order. Run every walkthrough; do the exercises at the bottom of each script.</td></tr>
+<tr><td><strong>You already build agents</strong></td><td>Start at 05, then 09, then 08. You know the primitives; the gap is almost certainly verification design and the discipline of deleting.</td></tr>
+<tr><td><strong>You're evaluating a vendor</strong></td><td>08 and 07. Ask them for a HarnessCard and ask where their credentials live.</td></tr>
+</table>
+
+<div class="box check">
+  <span class="label">A standing caution</span>
+  <p>This field's canon is fifteen months old and its strongest claims come from teams shipping products they also sell. Anthropic's harness posts are excellent engineering writing and also marketing for Claude. The LangChain post defines a term while selling a framework. Read for mechanism, discount the framing, and verify against your own ablations.</p>
+</div>
+
+<div class="pager">
+  <span></span>
+  <a class="to-right" href="lessons/00-what-is-a-harness.html">Module 00 — What a harness actually is →</a>
+</div>
+
+</div>
+</body>
+</html>

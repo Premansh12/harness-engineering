@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+lab/_ws*/
+.DS_Store
+
+# Locally-extracted primary-source text used to compile the lessons.
+# Not redistributed — every source is linked from sources.html.
+sources/

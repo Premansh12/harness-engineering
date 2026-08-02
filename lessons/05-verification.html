@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · Back-pressure: silent success, loud failure</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 05</p>
+  <h1>Back-pressure</h1>
+  <p class="standfirst">An agent that cannot tell whether its work is correct will confidently tell you it is. This module covers the two halves of the fix: shaping verification signals so success costs nothing and failure is actionable, and separating the agent that does the work from the agent that judges it.</p>
+  <p class="meta"><span>Walkthrough</span><span>lab/w05_backpressure.py</span><span>55 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>Success must be silent</h2>
+
+<p>Start with a measurement, because this one is larger than people expect. A test suite with 220 passing tests, run through a harness two ways:</p>
+
+<div class="filename">real output · lab/w05_backpressure.py</div>
+<pre><code>verbose (dump all)     context after one green run:   10,011 chars
+silent on success      context after one green run:       89 chars</code></pre>
+
+<p>Same information content. The agent learns exactly one thing in both cases — <em>everything passed</em> — at a <strong>112x difference in context cost</strong>. And that is one run. An agent that verifies twenty times over a long session pays that difference twenty times.</p>
+
+<p>HumanLayer reports the concrete downstream failure: 4,000 lines of passing test output flooded the window and the agent started hallucinating about files it had just read. The verification step, meant to increase reliability, destroyed it.</p>
+
+<blockquote>Success should be silent. Failure should be loud, specific, and actionable.<cite>The design contract</cite></blockquote>
+
+<div class="box walk">
+  <span class="label">Run it</span>
+  <div class="filename">terminal</div>
+  <pre><code>python3 lab/w05_backpressure.py</code></pre>
+  <p>Part A measures the output-shape difference and then demonstrates a failure hook. Part B is the generator/evaluator experiment.</p>
+</div>
+
+<h3>What "actionable" means</h3>
+
+<p>Not just loud — <em>useful</em>. Compare:</p>
+
+<pre><code>FAILED: 1 test failed</code></pre>
+
+<pre><code>exit=1
+tests/test_auth.py::test_expired_token FAILED
+E   AssertionError: expected 401, got 200
+E   at auth/middleware.py:88</code></pre>
+
+<p>The second contains the file, the line, the expectation, and the actual. The agent can act on it without a round trip to go investigate. Every round trip you save is latency, tokens, and one fewer opportunity to lose the thread.</p>
+
+<p>Böckeler's framing of this is sharp — a sensor that emits signal optimised for LLM consumption is <em>"a positive kind of prompt injection"</em>. You are deliberately writing text designed to steer the model, and delivering it through a channel the model cannot ignore.</p>
+
+<h2><span class="num">Section 2</span>Hooks: the part the model cannot skip</h2>
+
+<p>Asking the model to run tests works most of the time. Most of the time is not a control. A hook fires deterministically, in harness code, regardless of what the model felt like doing:</p>
+
+<div class="filename">lab/w05_backpressure.py</div>
+<pre><code>hooks={"post_tool": lambda n, a, r:
+       "VERIFICATION FAILED — fix before finishing" if "exit=1" in r else None}</code></pre>
+
+<div class="filename">real output — the trace</div>
+<pre><code>[ 0.000] tool  test({'fail': True})
+[ 0.000] hook  {'name': 'test', 'injected': 'VERIFICATION FAILED — fix before finishing'}
+[ 0.000]   ->  exit=1
+              tests/test_auth.py::test_expired_token FAILED
+              E   AssertionError: expected 401, got 200
+              E   at auth/middleware.py:88
+              [hook] VERIFICATION FAILED — fix before finishing
+[ 0.000] tool  test({})
+[ 0.000]   ->  exit=0
+[ 0.000] say   Fixed auth/middleware.py:88, suite green.</code></pre>
+
+<p>The model cannot decline to see the injected line, cannot reason past it, and it appears whether or not the model was inclined to check. That combination — <strong>deterministic, unavoidable, legible</strong> — is what distinguishes a control from a suggestion.</p>
+
+<p>Map it back to Module 00's grid: this is a <em>computational sensor</em> feeding an <em>inferential</em> actor. Cheap, reliable, and it runs on every single tool call.</p>
+
+<h2><span class="num">Section 3</span>An agent cannot grade its own work</h2>
+
+<p>The second half of the module, and the more surprising one.</p>
+
+<blockquote>When asked to evaluate work they've produced, agents tend to respond by confidently praising the work — even when, to a human observer, the quality is obviously mediocre.<cite>Anthropic</cite></blockquote>
+
+<p>Part B of the walkthrough runs the same generator through two graders. Three landing-page drafts, escalating in quality; the grader decides when to stop.</p>
+
+<div class="filename">real output · lab/w05_backpressure.py</div>
+<pre><code>self-evaluation
+  passed after 1 round(s)
+    round 1: score  9  Looks great! Clean, modern, professional. Ship it.
+  shipped: Landing page: white bg, purple gradient hero, three feature cards…
+
+separate + skeptical
+  passed after 3 round(s)
+    round 1: score  4  generic AI-slop pattern: 'purple gradient';
+                       generic AI-slop pattern: 'three feature cards'…
+    round 2: score  8  no stock-pattern tells; distinct point of view
+    round 3: score 10  no stock-pattern tells; distinct point of view
+  shipped: Landing page: near-black canvas, editorial type scale, full-bleed…</code></pre>
+
+<p>Self-evaluation shipped draft one with a 9/10 and a compliment. The skeptical evaluator forced two revisions.</p>
+
+<h3>Why separation works</h3>
+
+<p>It is not that the second grader is smarter. It is the same model. Three things changed:</p>
+
+<ol>
+<li><strong>Separation.</strong> The grader has no investment in the artifact. It did not write it and gains nothing from its approval.</li>
+<li><strong>Criteria.</strong> "Is this good?" became "does it violate these four named rules?" A subjective judgment became a checkable one.</li>
+<li><strong>Calibration.</strong> Anthropic used few-shot examples with detailed score breakdowns, which aligned the evaluator's judgment with the author's and reduced score drift across iterations.</li>
+</ol>
+
+<div class="box warn">
+  <span class="label">Anthropic's honest caveat</span>
+  <p>Separation alone does <em>not</em> eliminate leniency. The evaluator is still an LLM and still inclined to be generous toward LLM-generated output. Their actual claim is narrower and more useful: <em>"tuning a standalone evaluator to be skeptical turns out to be far more tractable than making a generator critical of its own work."</em> It is a better place to apply pressure, not a solved problem.</p>
+</div>
+
+<h3>The four criteria</h3>
+
+<p>From their frontend design work, given to <em>both</em> generator and evaluator:</p>
+
+<table>
+<tr><th>Criterion</th><th>Question</th></tr>
+<tr><td><strong>Design quality</strong></td><td>Does it feel like a coherent whole rather than a collection of parts?</td></tr>
+<tr><td><strong>Originality</strong></td><td>Evidence of custom decisions, or template layouts and library defaults?</td></tr>
+<tr><td><strong>Craft</strong></td><td>Typography hierarchy, spacing, colour harmony, contrast. A competence check.</td></tr>
+<tr><td><strong>Functionality</strong></td><td>Can users find primary actions and complete tasks without guessing?</td></tr>
+</table>
+
+<p>They weighted design quality and originality heavily, because Claude already scored well on craft and functionality by default. The criteria explicitly penalised generic patterns — the walkthrough's evaluator does the same, docking points for "purple gradient" and "three feature cards".</p>
+
+<p>An unnerving detail: the <em>wording</em> steered outputs in ways they did not anticipate. Including "the best designs are museum quality" pushed generations toward a particular visual convergence. Your criteria are not a neutral measuring instrument; they are also a prompt.</p>
+
+<h2><span class="num">Section 4</span>What it costs</h2>
+
+<p>The full three-agent harness versus a single agent on the same prompt:</p>
+
+<table>
+<tr><th>Harness</th><th>Duration</th><th>Cost</th></tr>
+<tr><td>Solo</td><td>20 min</td><td>$9</td></tr>
+<tr><td>Full harness (planner + generator + evaluator)</td><td>6 hr</td><td>$200</td></tr>
+</table>
+
+<p><strong>20x the cost.</strong> The difference in output was stark — the solo run produced an app whose central feature simply did not work, with the wiring between entity definitions and the game runtime broken and no surface indication of where. The harness run produced something playable.</p>
+
+<p>But the honest conclusion is conditional, and it is the sentence to remember:</p>
+
+<blockquote>The evaluator is not a fixed yes-or-no decision. It is worth the cost when the task sits beyond what the current model does reliably solo.<cite>Anthropic</cite></blockquote>
+
+<p>On Sonnet 4.5 that boundary was close, and the evaluator caught meaningful issues across the whole build. On Opus 4.6 the boundary moved outward: tasks that used to need evaluator oversight were handled well solo, and for those the evaluator became overhead. It kept earning its cost only at the edge of the generator's capability.</p>
+
+<h3>Tuning an evaluator is real work</h3>
+
+<p>Anthropic is blunt that this did not work out of the box: <em>"Out of the box, Claude is a poor QA agent."</em> Early runs identified legitimate issues, then talked themselves into deciding they were not a big deal and approved anyway. It also tested superficially rather than probing edge cases.</p>
+
+<p>Their loop: read the evaluator's logs, find cases where its judgment diverged from yours, update the prompt to close that gap, repeat. Several rounds before it graded acceptably. Note that this is the ratchet from Module 00, applied to a harness component rather than to the code.</p>
+
+<div class="box evidence">
+  <span class="label">Sprint contracts</span>
+  <p>One more mechanism worth stealing. Before each chunk of work, generator and evaluator <strong>negotiated a contract</strong>: what "done" looks like, and how it will be verified — agreed before any code was written. The generator proposed, the evaluator reviewed, they iterated until agreement. Sprint 3 alone had 27 criteria for the level editor. This bridges the gap between a deliberately high-level spec and a testable implementation, without over-specifying the technical path upfront.</p>
+</div>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>Add a fifth "tell" to the skeptical evaluator. Does draft #3 still pass? This is how criteria drift into over-fitting the grader.</li>
+    <li>Make the evaluator hostile enough that nothing passes in three rounds. What does your harness do — loop forever, ship the best attempt, or escalate to a human? Implement your answer.</li>
+    <li>Take your own test runner and make it silent on success. Measure the before and after in characters.</li>
+    <li>Write four grading criteria for your actual domain, weighted. Then find a case where a well-scoring output is obviously bad, and fix the criteria. Repeat until you cannot.</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="04-state-and-handoff.html">← Module 04</a>
+  <a class="to-right" href="06-long-horizon.html">Module 06 — Long horizons →</a>
+</div>
+
+</div>
+</body>
+</html>

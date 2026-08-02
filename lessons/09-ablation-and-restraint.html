@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>09 · Ablation, and the discipline of deleting</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 09</p>
+  <h1>The discipline of deleting</h1>
+  <p class="standfirst">Every harness component encodes an assumption about what the model cannot do. Assumptions expire, silently, on a schedule set by someone else's release calendar. This module is about the only reliable way to find the expired ones — and the capstone that makes you do it.</p>
+  <p class="meta"><span>Walkthrough + capstone</span><span>lab/w08_ablation.py</span><span>60 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The central claim</h2>
+
+<blockquote>Every component in a harness encodes an assumption about what the model can't do on its own, and those assumptions are worth stress testing — both because they may be incorrect, and because they can quickly go stale as models improve.<cite>Anthropic, Harness design for long-running application development</cite></blockquote>
+
+<p>Read that as a maintenance obligation. Your harness is a set of bets about model weakness. Some were wrong when you made them. Others were right and have since expired. Neither kind announces itself, because a harness component that has become useless <strong>still works</strong> — it just costs you tokens, latency, and complexity for nothing.</p>
+
+<p>The documented examples from this course:</p>
+
+<table>
+<tr><th>Component</th><th>Assumption it encoded</th><th>Fate</th></tr>
+<tr><td>Context resets</td><td>The model gets context anxiety and wraps up early</td><td>Dropped on Opus 4.5 — behaviour gone from the model</td></tr>
+<tr><td>Sprint decomposition</td><td>The model cannot chunk a large build itself</td><td>Removed on Opus 4.6 — handled natively</td></tr>
+<tr><td>Per-sprint evaluator</td><td>The model ships plausible-looking broken code</td><td>Reduced to a single end pass; still earns its cost only at the capability edge</td></tr>
+<tr><td>Planner</td><td>The generator under-scopes from a bare prompt</td><td>Kept — the failure is still live</td></tr>
+</table>
+
+<p>Three of four expired within roughly two model generations. That is the half-life you are designing against.</p>
+
+<h2><span class="num">Section 2</span>The method</h2>
+
+<p>Anthropic tried the intuitive approach first and it failed instructively. They cut the harness back radically and introduced new ideas at the same time. They could not replicate the original performance — and worse:</p>
+
+<blockquote>It also became difficult to tell which pieces of the harness design were actually load-bearing, and in what ways.<cite>Anthropic</cite></blockquote>
+
+<p>Changing many variables at once destroys your ability to attribute the result. They restarted with the boring method: <strong>remove one component at a time, measure, decide.</strong></p>
+
+<div class="box walk">
+  <span class="label">Run it</span>
+  <div class="filename">terminal</div>
+  <pre><code>python3 lab/w08_ablation.py</code></pre>
+</div>
+
+<div class="filename">real output</div>
+<pre><code>configuration       ctx chars     rm -rf   shipped broken
+------------------------------------------------------------
+full harness            1,490    blocked               no
+− permissions           1,490        RAN               no  ( 1.0x)
+− back-pressure         1,442    blocked              YES  ( 1.0x)
+− truncation            8,263    blocked               no  ( 5.5x)
+− context policy        5,280    blocked               no  ( 3.5x)
+bare loop              32,280        RAN              YES  (21.7x)</code></pre>
+
+<p>Every row is a one-component diff against row 1. Each removal degrades exactly one column, which is what "load-bearing" looks like when you can see it. The two context controls compose rather than overlap — 5.5x and 3.5x separately, 21.7x when both are gone alongside everything else.</p>
+
+<h3>The decision rule</h3>
+
+<ul>
+<li><strong>A column degrades</strong> → the component is load-bearing. Keep it, and note which failure it prevents so you can re-test that failure later.</li>
+<li><strong>Nothing changes</strong> → the component is cost. Delete it.</li>
+<li><strong>Something degrades slightly, at high cost</strong> → the interesting case. Now you need the cost column and a judgment call. Anthropic's evaluator lived here after Opus 4.6.</li>
+</ul>
+
+<h2><span class="num">Section 3</span>The counter-argument, taken seriously</h2>
+
+<p>There is a real position that most harness engineering is a temporary patch on model immaturity, and that elaborate scaffolding is what the bitter lesson warns against. Hugo Bowne-Anderson argues a version of this: teams over-engineer harnesses, then find each model release invalidates the work.</p>
+
+<p>The strong form of the argument does not survive contact with Module 02 — a model with no filesystem, no tool execution, and no sandbox is not an agent no matter how capable it gets. Some harness is definitional.</p>
+
+<p>But the weak form is correct and should change your behaviour:</p>
+
+<ul>
+<li>Harness complexity that <strong>compensates for a model weakness</strong> is temporary. Budget for its deletion.</li>
+<li>Harness complexity that <strong>provides a capability the model structurally lacks</strong> — state, execution, verification against ground truth, isolation — is durable.</li>
+<li>When you cannot tell which kind you are building, you are building the temporary kind.</li>
+</ul>
+
+<p>Anthropic's own framing, from their earlier Building Effective Agents post, points the same way: <em>"find the simplest solution possible, and only increase complexity when needed."</em> Their harness team quotes it back at themselves while dismantling their own work.</p>
+
+<div class="box warn">
+  <span class="label">The failure mode this module exists to prevent</span>
+  <p>A harness that only accumulates. Every incident adds a rule to AGENTS.md, a hook, a check. Nothing is ever removed, because removal feels risky and nobody can prove the component is dead. Eighteen months later you are paying thousands of tokens per turn for constraints against failure modes that vanished three model versions ago — and the accumulated context is itself degrading performance. <strong>The ratchet only works if it turns both ways.</strong></p>
+</div>
+
+<h2><span class="num">Section 4</span>Capstone</h2>
+
+<p>Everything in this course, applied once, end to end. Budget two to four hours.</p>
+
+<h3>Part 1 — Build</h3>
+<p>Pick a real, small, verifiable task in a repo you know. "Add input validation to these three endpoints and test it" is the right size. Build a harness for it using the lab runtime or your own:</p>
+<ul>
+<li>Tools scoped to the task, with descriptions you have actually counted (Module 02)</li>
+<li>A context policy — offload rather than compaction unless you can justify otherwise (Module 03)</li>
+<li>A handoff artifact with machine-checkable completion (Module 04)</li>
+<li>Verification: silent on success, actionable on failure, wired to a hook (Module 05)</li>
+<li>Stop conditions: steps, wall clock, cost (Module 01)</li>
+<li>A permission gate on anything irreversible (Module 07)</li>
+<li>A trace you can read afterwards (Module 01)</li>
+</ul>
+
+<h3>Part 2 — Card</h3>
+<p>Fill in a HarnessCard (Module 08). Every field. The ones you struggle with are the parts you did not design.</p>
+
+<h3>Part 3 — Ablate</h3>
+<p>Remove one component at a time. For each, record: what degraded, by how much, at what cost. Fix the model. Run n &gt; 1 and report variance. Build the table.</p>
+
+<h3>Part 4 — Delete</h3>
+<p>Remove everything the table shows is not load-bearing. This is the part that will feel wrong and is the point of the exercise. Re-run and confirm nothing broke.</p>
+
+<h3>Part 5 — Write it down</h3>
+<p>One page: what you kept, what you deleted, what surprised you. Date it and name the model version. That document is what you re-run against the next release — and the reason you will be able to delete more then.</p>
+
+<div class="box evidence">
+  <span class="label">Going live</span>
+  <p>To swap the fake model for a real one, implement a single method:</p>
+  <pre><code>class RealModel:
+    def complete(self, messages, tools=None):
+        # call your provider; return either
+        #   {"type": "text", "text": ...}
+        #   {"type": "tool_call", "name": ..., "args": {...}}
+        ...</code></pre>
+  <p>Nothing else in <code>harness_lab.py</code> changes. That the swap is this small is itself a finding: the harness never depended on the model, which is exactly the separation the whole field is named after.</p>
+</div>
+
+<h2><span class="num">Section 5</span>Where the field is going</h2>
+
+<p>Three things worth watching, flagged as speculation rather than fact:</p>
+
+<p><strong>Harness components migrating into models.</strong> The clearest trend in the sources — decomposition, self-correction, long-context coherence all moved from scaffolding into weights across two generations. Expect more. The components most likely to survive are the ones providing capabilities a model cannot have in principle: durable state, execution, ground-truth verification, isolation.</p>
+
+<p><strong>Verification as the bottleneck.</strong> Böckeler's behaviour harness — how do you guide and sense whether the application does what it is supposed to do — remains largely unsolved. Current practice leans heavily on AI-generated tests, and her assessment is that this "puts a lot of faith into the AI-generated tests; that's not good enough yet." As generation gets cheaper, verification becomes the constraint on everything.</p>
+
+<p><strong>Harness disclosure becoming normal.</strong> If the HarnessCard idea or something like it gets adopted, published agent numbers become comparable for the first time. If it does not, the literature stays hard to reason about. This one is genuinely uncertain and worth tracking.</p>
+
+<div class="box check">
+  <span class="label">Final check</span>
+  <ul>
+    <li>You can build an agent from scratch in under twenty lines and name every failure mode of that loop.</li>
+    <li>You measure context cost rather than estimating it.</li>
+    <li>You can distinguish reducing context from destroying it, and you know which one compaction does.</li>
+    <li>Your completion conditions are machine-checkable and evaluated outside the agent.</li>
+    <li>Your verification is silent on success and actionable on failure.</li>
+    <li>You know where your credentials live and what an injection could reach.</li>
+    <li>You have deleted a harness component this quarter.</li>
+  </ul>
+</div>
+
+<div class="pager">
+  <a href="08-evaluation.html">← Module 08</a>
+  <a class="to-right" href="../sources.html">Appendix — The source map →</a>
+</div>
+
+</div>
+</body>
+</html>

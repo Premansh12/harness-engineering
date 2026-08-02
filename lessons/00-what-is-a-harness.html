@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00 · What a harness actually is</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 00</p>
+  <h1>What a harness actually is</h1>
+  <p class="standfirst">Before anything useful can be said about designing harnesses, the word has to stop meaning four different things. This module fixes the terminology, then gives you the stack you will spend the rest of the course filling in.</p>
+  <p class="meta"><span>Reading</span><span>25 min</span><span>No walkthrough</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The definition, and its problem</h2>
+
+<p>The working definition is a subtraction:</p>
+
+<blockquote>A harness is every piece of code, configuration, and execution logic that isn't the model itself. A raw model is not an agent. It becomes one once a harness gives it state, tool execution, feedback loops, and enforceable constraints.
+<cite>Vivek Trivedy, LangChain, March 2026</cite></blockquote>
+
+<p>This is clean and it is also almost uselessly wide. "Everything that isn't the model" covers a system prompt and a Kubernetes cluster equally. Martin Fowler's site makes the same complaint and narrows it by <em>bounded context</em>: what counts as the harness depends on where you are standing.</p>
+
+<table>
+<tr><th>Standing at</th><th>Model</th><th>Harness</th></tr>
+<tr><td>A lab training a model</td><td>the weights</td><td>the RL environment, the scaffolding it was post-trained against</td></tr>
+<tr><td>A vendor building Claude Code</td><td>Claude</td><td>the CLI, tools, system prompt, compaction, hooks</td></tr>
+<tr><td>You, using Claude Code</td><td>Claude Code as a whole</td><td>AGENTS.md, skills, hooks, MCP config, CI checks, your review loop</td></tr>
+</table>
+
+<p>Böckeler calls the third row the <strong>outer harness</strong>: the part the tool's users build for their own codebase. Part of the harness ships with the agent and you cannot change it; part of it is yours. Most practical harness engineering happens in the outer layer.</p>
+
+<div class="box warn">
+  <span class="label">On the metaphor</span>
+  <p>Someone told Böckeler: "Have you ever tried to put a harness on the inside of a dog?" Nesting harnesses inside harnesses does stretch the word past breaking. Accept it as jargon that earns its keep by being useful, not by being apt.</p>
+</div>
+
+<h2><span class="num">Section 2</span>Why a harness has to exist at all</h2>
+
+<p>Derive it from the model's actual capability surface rather than from what agent frameworks happen to ship. A model takes in tokens and emits tokens. That is the whole interface. Out of the box it cannot:</p>
+
+<ul>
+<li>maintain durable state across interactions</li>
+<li>execute code</li>
+<li>access anything that postdates its training cutoff</li>
+<li>set up an environment or install a dependency</li>
+<li>observe the consequences of its own output</li>
+</ul>
+
+<p>Every one of those is a harness feature. Even chat is a harness: a while-loop that accumulates messages. You have been using harnesses since your first API call; the discipline is just taking that layer seriously as an artifact you design rather than inherit.</p>
+
+<p>The generative pattern Trivedy uses, and the one worth internalising:</p>
+
+<blockquote>Behaviour we want (or want to fix) → harness design that helps the model achieve it.<cite>The derivation rule</cite></blockquote>
+
+<p>Read backwards, this is also a deletion rule. <strong>If you cannot name the behaviour a component exists to deliver, it should not be there.</strong> Module 09 turns that into a measurement.</p>
+
+<h2><span class="num">Section 3</span>The four-layer stack</h2>
+
+<p>Assembled from the LangChain anatomy, the Anthropic engineering posts, and Böckeler's control-theory framing, the components sort into four layers. The rest of the course is one module per cluster.</p>
+
+<h4>Layer 1 · Interface — what the model can touch</h4>
+<ul>
+<li><strong>Tools</strong> and their descriptions; MCP servers; skills</li>
+<li><strong>Filesystem</strong> — workspace, durable state, collaboration surface</li>
+<li><strong>Bash / code execution</strong> — the general-purpose tool that removes the need to pre-build every other one</li>
+<li><strong>Sandbox</strong> — where that code runs, and what it can reach from there</li>
+</ul>
+
+<h4>Layer 2 · Context — what the model sees, and when</h4>
+<ul>
+<li><strong>System prompt</strong>, AGENTS.md / CLAUDE.md, skill front-matter</li>
+<li><strong>Compaction</strong>, tool-output offloading, progressive disclosure</li>
+<li><strong>Retrieval</strong> and search; memory files</li>
+</ul>
+
+<h4>Layer 3 · Control — what happens between turns</h4>
+<ul>
+<li><strong>The loop</strong> itself, and its stop conditions</li>
+<li><strong>Hooks and middleware</strong> — deterministic execution the model cannot skip</li>
+<li><strong>Permissions</strong> and approval gates</li>
+<li><strong>Orchestration</strong> — subagents, handoffs, model routing</li>
+</ul>
+
+<h4>Layer 4 · Feedback — how the system learns it was wrong</h4>
+<ul>
+<li><strong>Verification</strong>: tests, linters, type checkers, builds</li>
+<li><strong>Inferential grading</strong>: LLM-as-judge, evaluator agents, code review</li>
+<li><strong>Observability</strong>: traces, cost and latency metering, logs</li>
+<li><strong>The human</strong>, positioned deliberately rather than by default</li>
+</ul>
+
+<h2><span class="num">Section 4</span>Feedforward and feedback</h2>
+
+<p>Böckeler's contribution is the cleanest organising axis in the field, borrowed from control theory. Everything in a harness is one of two things:</p>
+
+<table>
+<tr><th></th><th>Guides (feedforward)</th><th>Sensors (feedback)</th></tr>
+<tr><td><strong>When</strong></td><td>before the agent acts</td><td>after the agent acts</td></tr>
+<tr><td><strong>Job</strong></td><td>raise P(correct on first attempt)</td><td>let it self-correct</td></tr>
+<tr><td><strong>Examples</strong></td><td>AGENTS.md, skills, code mods, bootstrap scripts</td><td>tests, linters, ArchUnit rules, review agents</td></tr>
+</table>
+
+<p>Her warning about picking only one:</p>
+
+<blockquote>Separately, you get either an agent that keeps repeating the same mistakes, or an agent that encodes rules but never finds out whether they worked.<cite>Birgitta Böckeler, martinfowler.com</cite></blockquote>
+
+<p>Crossed with a second axis — how the control executes:</p>
+
+<table>
+<tr><th></th><th>Computational</th><th>Inferential</th></tr>
+<tr><td><strong>Runs on</strong></td><td>CPU</td><td>GPU / a model call</td></tr>
+<tr><td><strong>Speed</strong></td><td>ms to seconds</td><td>seconds to minutes</td></tr>
+<tr><td><strong>Determinism</strong></td><td>reliable, repeatable</td><td>probabilistic, drifts</td></tr>
+<tr><td><strong>Cost</strong></td><td>negligible — run on every change</td><td>real — run selectively</td></tr>
+</table>
+
+<p>The two-by-two is a design tool. Computational sensors are cheap enough to run on every edit and catch structural problems reliably — duplication, complexity, coverage gaps, architectural drift, style. Inferential sensors catch things requiring semantic judgment — semantically duplicated code, over-engineering, brute-force fixes — expensively and unreliably.</p>
+
+<div class="box warn">
+  <span class="label">What neither catches</span>
+  <p>Böckeler is explicit about the residue: misdiagnosis of the actual problem, over-engineering, unnecessary features, and misunderstood instructions are caught by <em>neither</em> class reliably. And "correctness is outside any sensor's remit if the human didn't clearly specify what they wanted in the first place." No harness rescues an unspecified goal. This is the ceiling on autonomy and it is a human-side ceiling.</p>
+</div>
+
+<h2><span class="num">Section 5</span>Three things this is not</h2>
+
+<h3>Not prompt engineering</h3>
+<p>Prompt engineering optimises the string. Harness engineering designs the system that decides which strings exist, when they are assembled, what tools accompany them, and what happens to the output. The prompt is one component in Layer 2.</p>
+
+<h3>Not quite context engineering</h3>
+<p>Böckeler's formulation: <em>"Context engineering provides us with the means to make guides and sensors available to the agent. Engineering a user harness for a coding agent is a specific form of context engineering."</em> Trivedy inverts the containment — <em>"harnesses today are largely delivery mechanisms for good context engineering."</em> They are describing the same overlap from two sides. Practically: context engineering asks <em>what goes in the window</em>; harness engineering also asks <em>what runs between turns, what the agent can touch, and when it stops</em>. Layer 2 of four.</p>
+
+<h3>Not a framework</h3>
+<p>The most important structural claim in the field, from Addy Osmani:</p>
+
+<blockquote>The right harness for your codebase is shaped by your failure history. You can't download it.<cite>Addy Osmani, April 2026</cite></blockquote>
+
+<p>You can download primitives. The specific set of constraints that makes an agent reliable <em>in your repo</em> is derived from mistakes you have actually watched it make. Which gives the field its central habit.</p>
+
+<h2><span class="num">Section 6</span>The ratchet</h2>
+
+<p>Osmani's one-line summary of the whole discipline:</p>
+
+<blockquote>Anytime you find an agent makes a mistake, you take the time to engineer a solution such that the agent never makes that mistake again.<cite>Addy Osmani</cite></blockquote>
+
+<p>The habit underneath it is treating agent mistakes as <strong>permanent signals</strong> rather than bad runs to retry. His worked example: the agent ships a PR with a commented-out test.</p>
+
+<ul>
+<li>AGENTS.md gains a line: never comment out tests; delete them or fix them.</li>
+<li>The pre-commit hook greps the diff for <code>.skip(</code> and <code>xit(</code>.</li>
+<li>The reviewer subagent gets commented-out tests as a blocking category.</li>
+</ul>
+
+<p>Note that one failure produced controls at three different layers, with three different cost and reliability profiles. That is the shape of a mature response.</p>
+
+<p>The discipline has a matching inverse, and it is the part people skip:</p>
+
+<div class="box check">
+  <span class="label">The two-sided rule</span>
+  <p><strong>You only add a constraint when you have seen a real failure. You only remove it when a capable model has made it redundant.</strong> Every line in a good AGENTS.md should be traceable to a specific thing that went wrong. Every line that no longer maps to a live failure mode is context tax you are paying on every single turn.</p>
+</div>
+
+<p>Module 09 is entirely about the second half of that rule, because it is the half almost nobody does.</p>
+
+<h2><span class="num">Section 7</span>Harnessability</h2>
+
+<p>Not every codebase accepts a harness equally well. A strongly typed language gives you a type checker as a free sensor. Clear module boundaries afford architectural constraint rules. A framework that abstracts away detail reduces what the agent can get wrong.</p>
+
+<p>Ned Letcher's term for this, quoted by Böckeler, is <strong>ambient affordances</strong>: "structural properties of the environment itself that make it legible, navigable, and tractable to agents operating within it."</p>
+
+<p>The consequence is uncomfortable and worth sitting with. Greenfield teams can bake harnessability in from day one — the language, the architecture, and the test strategy all determine how governable the codebase will be later. Legacy teams face the inverse:</p>
+
+<blockquote>The harness is most needed where it is hardest to build.<cite>Birgitta Böckeler</cite></blockquote>
+
+<div class="box check">
+  <span class="label">Check yourself before moving on</span>
+  <ul>
+    <li>Name the four layers and put one component of your current setup in each.</li>
+    <li>For each, say whether it is a guide or a sensor, and computational or inferential.</li>
+    <li>Find one line in your AGENTS.md that you cannot trace to a specific observed failure. That is your first deletion candidate.</li>
+    <li>Rate your main repo's harnessability. What ambient affordance is missing that would make the biggest difference?</li>
+  </ul>
+</div>
+
+<div class="pager">
+  <a href="../index.html">← Syllabus</a>
+  <a class="to-right" href="01-the-loop.html">Module 01 — The loop is the agent →</a>
+</div>
+
+</div>
+</body>
+</html>

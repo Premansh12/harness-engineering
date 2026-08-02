@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 · Evaluating harnesses honestly</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 08</p>
+  <h1>Evaluating harnesses honestly</h1>
+  <p class="standfirst">Almost every published agent benchmark number is a joint measurement of a model and a harness, reported as if it were a property of the model. Once you see that confound you cannot unsee it — and it changes how you read the field and how you report your own results.</p>
+  <p class="meta"><span>Reading + walkthrough</span><span>lab/w08_ablation.py</span><span>45 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The confound</h2>
+
+<p>The cleanest available demonstration, from Terminal Bench 2.0:</p>
+
+<table>
+<tr><th>Configuration</th><th>Approximate rank</th></tr>
+<tr><td>Claude Opus 4.6 inside Claude Code</td><td>~#33</td></tr>
+<tr><td>Claude Opus 4.6 inside a custom harness</td><td>~#5</td></tr>
+</table>
+
+<p>Same weights. Same benchmark. The variable was the harness — its tools, its prompt, its feedback signals, its loop. This figure circulates through Trivedy's and HumanLayer's write-ups and I have not verified it against the leaderboard directly, so treat the exact ranks as approximate. The <em>magnitude</em> of the effect is the point, and it is corroborated by Trivedy's team independently moving an agent from Top 30 to Top 5 by changing only the harness.</p>
+
+<p>There is a mechanism for this, and it is not "custom harnesses are just better":</p>
+
+<blockquote>Models get post-training coupled to the harness they were trained against. Moving them into a different harness — with better tools for your codebase, a tighter prompt, and sharper back-pressure — can unlock capability the original harness was leaving on the floor.<cite>Addy Osmani, paraphrasing the mechanism</cite></blockquote>
+
+<div class="box warn">
+  <span class="label">What this breaks</span>
+  <p>Every claim of the form "model X scores N on benchmark B" is really "model X <em>in harness H</em> scores N on B". If H is unspecified, the number is not reproducible and comparisons across labs are not apples to apples. This is not a minor caveat — the harness effect above is larger than the gap between many adjacent model releases.</p>
+</div>
+
+<h2><span class="num">Section 2</span>The HarnessCard</h2>
+
+<p>The preprint by He et al. (Preprints.org 202603.1756) argues that harness configuration should be reported alongside results as a matter of course, and proposes a standard disclosure. Their required fields:</p>
+
+<table>
+<tr><th>Field</th><th>What it captures</th></tr>
+<tr><td><strong>Model + version</strong></td><td>Exact checkpoint, not "Claude"</td></tr>
+<tr><td><strong>Tool inventory & permissions</strong></td><td>What the agent could do, and what was gated</td></tr>
+<tr><td><strong>Context policy</strong></td><td>Compaction, offloading, retrieval, window management</td></tr>
+<tr><td><strong>State / memory design</strong></td><td>What persists, in what format, across what boundary</td></tr>
+<tr><td><strong>Loop & stop conditions</strong></td><td>Iteration structure and every termination criterion</td></tr>
+<tr><td><strong>Feedback stack</strong></td><td>Tests, graders, human checkpoints — what signals reached the agent</td></tr>
+<tr><td><strong>Governance</strong></td><td>Sandboxing, approvals, provenance logging</td></tr>
+<tr><td><strong>Eval protocol</strong></td><td>Task set, number of runs, variance, outcome criteria, budget limits</td></tr>
+</table>
+
+<p>I would treat this as a well-argued proposal rather than an adopted standard — it is a preprint, and adoption is currently near zero. But the fields are a good self-audit even if nobody else ever reads your card. If you cannot fill one in for your own system, you do not know your own system.</p>
+
+<h2><span class="num">Section 3</span>Capability framings</h2>
+
+<p>NVIDIA's developer blog offers a complementary lens: rather than listing components, enumerate the <em>capabilities</em> a harness provides and evaluate whether each is present and working. Their framing centres on things like environment setup and tool access, context management, planning and decomposition, verification and self-correction, error recovery, and observability.</p>
+
+<p>The value is as a checklist against blind spots. Component lists tend to reflect what your framework happens to ship. Capability lists ask what the agent actually needs, which surfaces the gaps — most commonly error recovery and observability, which no framework makes you configure and which nothing forces you to notice are missing.</p>
+
+<h2><span class="num">Section 4</span>Measuring your own</h2>
+
+<div class="box walk">
+  <span class="label">Run it</span>
+  <div class="filename">terminal</div>
+  <pre><code>python3 lab/w08_ablation.py</code></pre>
+  <p>This is also Module 09's walkthrough. Here, read it as an evaluation instrument; there, as a design discipline.</p>
+</div>
+
+<div class="filename">real output · lab/w08_ablation.py</div>
+<pre><code>configuration       ctx chars     rm -rf   shipped broken
+------------------------------------------------------------
+full harness            1,490    blocked               no
+− permissions           1,490        RAN               no  ( 1.0x)
+− back-pressure         1,442    blocked              YES  ( 1.0x)
+− truncation            8,263    blocked               no  ( 5.5x)
+− context policy        5,280    blocked               no  ( 3.5x)
+bare loop              32,280        RAN              YES  (21.7x)</code></pre>
+
+<p>The structure to notice: <strong>each removed component maps to exactly one degraded column.</strong> That one-to-one mapping is the definition of load-bearing. Remove permissions, the destructive command runs. Remove back-pressure, the agent ships broken work. Remove either context control, the window inflates 3.5–5.5x. Remove everything, all three fail and context is 21.7x the baseline.</p>
+
+<p>A component that changes <em>no</em> column under ablation is not load-bearing. It is cost.</p>
+
+<h3>Four rules that make this measurement rather than vibes</h3>
+
+<ol>
+<li><strong>Fix the model.</strong> An ablation across different models measures nothing. Pin the exact checkpoint.</li>
+<li><strong>Run n &gt; 1.</strong> Real agent runs are non-deterministic. A single run is an anecdote. Report variance, not just the mean — and if variance swamps your effect, you have not found an effect.</li>
+<li><strong>Report cost alongside outcome.</strong> +2% at 20x cost and +2% for free are different decisions. Anthropic's 6hr/$200 versus 20min/$9 comparison is the model for this.</li>
+<li><strong>Re-run on every model upgrade.</strong> Components expire. Context resets were essential on Sonnet 4.5 and dead weight on Opus 4.5.</li>
+</ol>
+
+<div class="box evidence">
+  <span class="label">On the fake model</span>
+  <p>The lab uses a scripted model, which makes the table above perfectly reproducible and n=1 sufficient. That is the right instrument for <em>teaching</em> the method, because it isolates harness behaviour completely. When you run this against a real model on real tasks, rule 2 becomes binding and the table gets error bars. Do not skip that step and do not report the deterministic version as if it were the real one.</p>
+</div>
+
+<h2><span class="num">Section 5</span>What to measure</h2>
+
+<p>Outcome metrics alone are too coarse to debug a harness. Pair them with process metrics:</p>
+
+<table>
+<tr><th>Outcome</th><th>Process</th></tr>
+<tr><td>Task success rate</td><td>Tool calls per task; error rate per tool</td></tr>
+<tr><td>Cost per completed task</td><td>Context size over time; truncation count</td></tr>
+<tr><td>Wall clock to completion</td><td>Steps to first verification signal</td></tr>
+<tr><td>Human interventions required</td><td>Denials, hook fires, recovery attempts</td></tr>
+<tr><td>Regressions introduced</td><td>Premature-completion rate</td></tr>
+</table>
+
+<p>The process column is what tells you <em>why</em> a number moved. A success-rate drop with a simultaneous spike in truncations points at Module 03. A drop with unchanged process metrics points at the model or the task set.</p>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>Fill in a HarnessCard for a system you actually use. Which field is hardest, and what does that say about what you have not designed deliberately?</li>
+    <li>Add a needle-survival column (from Module 03) to the ablation table. Does the context-policy row now show a cost the current table hides?</li>
+    <li>Find a published agent benchmark claim. What harness details are disclosed? Could you reproduce it?</li>
+    <li>Instrument one process metric on your real setup and watch it for a week. Most people discover something they were wrong about.</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="07-safety-and-sandboxing.html">← Module 07</a>
+  <a class="to-right" href="09-ablation-and-restraint.html">Module 09 — Ablation and restraint →</a>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Appendix · The source map</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="index.html">Harness Engineering</a> · Appendix</p>
+  <h1>The source map</h1>
+  <p class="standfirst">Every primary source this course was compiled from, annotated with what it is, what to read it for, and how much weight its claims can carry. Retrieved 2 August 2026; full extracted text is in <code>sources/</code>.</p>
+  <p class="meta"><span>15 sources</span><span>~310,000 characters extracted</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<div class="box warn">
+  <span class="label">Read the field with your guard up</span>
+  <p>Harness engineering is roughly eighteen months old as a named discipline. Its canon is written almost entirely by people selling something adjacent — model providers, framework vendors, consultancies. That does not make the engineering wrong; these are the teams with the most reps. It does mean the framing is not neutral and the negative results are underreported. Read for mechanism. Discount conclusions. Verify by ablation.</p>
+</div>
+
+<h2><span class="num">Tier 1</span>Read these first</h2>
+
+<h3>The Anatomy of an Agent Harness</h3>
+<p class="sources"><span class="tag primary">Primary</span> Vivek Trivedy · LangChain · 10 March 2026 · <a href="https://blog.langchain.com/the-anatomy-of-an-agent-harness/">blog.langchain.com</a></p>
+<p>The definitional text. Coins <em>Agent = Model + Harness</em> and derives each component by working backwards from what a model structurally cannot do. The derivation method — <em>behaviour we want → harness design that delivers it</em> — is more valuable than any individual component it derives.</p>
+<p><strong>Read it for:</strong> the definition, the derivation discipline, the components list.<br>
+<strong>Discount:</strong> it is also a LangChain positioning piece. Framework-shaped conclusions.<br>
+<strong>Used in:</strong> Modules 00, 02, 03.</p>
+
+<h3>Harness design for long-running application development</h3>
+<p class="sources"><span class="tag primary">Primary</span> Prithvi Rajasekaran · Anthropic · 24 March 2026 · <a href="https://www.anthropic.com/engineering/harness-design-for-long-running-application-development">anthropic.com/engineering</a></p>
+<p>The most valuable single document in the field, because it is the only one that reports <strong>removing</strong> things and says what happened. Planner/generator/evaluator architecture, context resets versus compaction, the self-evaluation failure, the 6hr/$200 versus 20min/$9 comparison, and the methodical one-at-a-time simplification after a radical cutback failed.</p>
+<p><strong>Read it for:</strong> the ablation methodology, the honest cost numbers, the components they killed.<br>
+<strong>Discount:</strong> Claude-specific throughout; every finding is entangled with one model family.<br>
+<strong>Used in:</strong> Modules 03, 04, 05, 06, 09.</p>
+
+<h3>Harness engineering (the coding agent user's view)</h3>
+<p class="sources"><span class="tag primary">Primary</span> Birgitta Böckeler · martinfowler.com · 2026 · <a href="https://martinfowler.com/articles/harness-engineering.html">martinfowler.com/articles</a></p>
+<p>The best conceptual scaffolding available. Guides versus sensors (feedforward/feedback), computational versus inferential, the inner/outer harness distinction, regulation categories, and harnessability. Also the most honest about limits — explicit that neither control class reliably catches misdiagnosis, over-engineering, or misunderstood instructions.</p>
+<p><strong>Read it for:</strong> the two-by-two, the bounded-context framing, the stated limits.<br>
+<strong>Discount:</strong> little quantitative evidence; it is a conceptual paper.<br>
+<strong>Used in:</strong> Modules 00, 05.</p>
+
+<h3>Agent Harness Engineering</h3>
+<p class="sources"><span class="tag primary">Primary</span> Addy Osmani · 19 April 2026 · <a href="https://addyo.substack.com/p/agent-harness-engineering">addyo.substack.com</a></p>
+<p>The best synthesis and the clearest writing. Sources the term to Trivedy, pulls together HumanLayer and Anthropic, and articulates the ratchet: <em>anytime an agent makes a mistake, engineer a solution so it never makes that mistake again</em> — with the crucial inverse about removing constraints models have made redundant.</p>
+<p><strong>Read it for:</strong> the ratchet, the two-sided rule, the "you can't download it" argument.<br>
+<strong>Discount:</strong> secondary throughout; verify its citations at the primaries.<br>
+<strong>Used in:</strong> Modules 00, 02, 08.</p>
+
+<hr>
+
+<h2><span class="num">Tier 2</span>Substantial and specific</h2>
+
+<h3>Skill issue: harness engineering for coding agents</h3>
+<p class="sources"><span class="tag primary">Primary</span> HumanLayer · <a href="https://humanlayer.dev/blog/skill-issue-harness-engineering-for-coding-agents">humanlayer.dev/blog</a></p>
+<p>The most practical of the set. "It's not a model problem, it's a configuration problem." Source of the silent-success verification contract, the CLI-over-MCP decision rule (they replaced the Linear MCP server with a CLI section in CLAUDE.md), the 4,000-lines-of-passing-tests hallucination story, and the tool-thrash negative result on restricting subagent toolbelts.</p>
+<p><strong>Read it for:</strong> concrete patterns and, unusually, a reported failure.<br>
+<strong>Used in:</strong> Modules 02, 05, 06.</p>
+
+<h3>Managed agents / the pets-to-cattle refactor</h3>
+<p class="sources"><span class="tag primary">Primary</span> Anthropic · <a href="https://www.anthropic.com/engineering/managed-agents">anthropic.com/engineering/managed-agents</a></p>
+<p>Infrastructure architecture, and the only source treating prompt injection as a structural problem rather than a prompting one. Harness/session/sandbox separation, git auth wired at sandbox init, the credential proxy, the append-only session log that makes compaction reversible, and the cold-start latency numbers.</p>
+<p><strong>Read it for:</strong> credential isolation, the three-interface decomposition.<br>
+<strong>Used in:</strong> Modules 03, 07.</p>
+
+<h3>Effective context engineering for AI agents</h3>
+<p class="sources"><span class="tag primary">Primary</span> Anthropic · <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">anthropic.com/engineering</a></p>
+<p>Context as a finite, degrading resource. Compaction, tool-output offloading, progressive disclosure, and the context-anxiety observation that motivates Module 04's resets.</p>
+<p><strong>Used in:</strong> Modules 03, 04.</p>
+
+<h3>Context engineering for agents</h3>
+<p class="sources"><span class="tag primary">Primary</span> LangChain · <a href="https://blog.langchain.com/context-engineering-for-agents/">blog.langchain.com</a></p>
+<p>Source of the write / select / compress / isolate taxonomy used throughout Module 03. Four buckets, and every technique in the field lands in one of them.</p>
+<p><strong>Used in:</strong> Module 03.</p>
+
+<h3>Six agent harness capabilities for higher model performance</h3>
+<p class="sources"><span class="tag primary">Primary</span> NVIDIA Developer Blog · <a href="https://developer.nvidia.com/blog/six-agent-harness-capabilities-for-higher-model-performance/">developer.nvidia.com/blog</a></p>
+<p>A capability-oriented checklist rather than a component list — useful precisely because it surfaces gaps a component list hides, particularly error recovery and observability.</p>
+<p><strong>Discount:</strong> vendor framing, oriented toward NVIDIA's stack.<br>
+<strong>Used in:</strong> Module 08.</p>
+
+<h3>Building effective agents</h3>
+<p class="sources"><span class="tag primary">Primary</span> Anthropic · <a href="https://www.anthropic.com/engineering/building-effective-agents">anthropic.com/engineering</a></p>
+<p>Predates the term but frames the restraint principle every later post quotes back: <em>find the simplest solution possible, and only increase complexity when needed.</em></p>
+<p><strong>Used in:</strong> Module 09.</p>
+
+<hr>
+
+<h2><span class="num">Tier 3</span>Counterpoint, formal work, and code</h2>
+
+<h3>Stop overengineering your agent harness</h3>
+<p class="sources"><span class="tag primary">Primary</span> Hugo Bowne-Anderson · <a href="https://hugobowne.substack.com/p/stop-overengineering-your-agent-harness">hugobowne.substack.com</a></p>
+<p>The dissent, and worth reading precisely because the rest of the canon is written by people who build elaborate harnesses. Argues teams over-build scaffolding that each model release invalidates. Module 09 takes the weak form seriously; the strong form does not survive Module 02.</p>
+<p><strong>Used in:</strong> Module 09.</p>
+
+<h3>Harness engineering / HarnessCard</h3>
+<p class="sources"><span class="tag paper">Preprint</span> He et al. · Preprints.org 202603.1756 · <a href="https://www.preprints.org/manuscript/202603.1756">preprints.org</a></p>
+<p>The only attempt at formalisation I found. Argues harness configuration is a confound in published agent results and proposes a structured disclosure standard.</p>
+<p><strong>Weight:</strong> preprint, not peer reviewed, adoption near zero. The <em>argument</em> is sound; treat the standard as a proposal and a good self-audit.<br>
+<strong>Used in:</strong> Module 08.</p>
+
+<h3>12-Factor Agents</h3>
+<p class="sources"><span class="tag code">Repo</span> HumanLayer · <a href="https://github.com/humanlayer/12-factor-agents">github.com/humanlayer/12-factor-agents</a></p>
+<p>Principles for production LLM applications, predating the harness vocabulary but overlapping heavily. Own your prompts, own your control flow, treat tools as structured output, make state explicit.</p>
+
+<h3>awesome-harness-engineering</h3>
+<p class="sources"><span class="tag code">Repo</span> <a href="https://github.com/walkinglabs/awesome-harness-engineering">github.com/walkinglabs/awesome-harness-engineering</a></p>
+<p>Link collection. Useful for finding what appeared after this course was compiled.</p>
+
+<h3>AI-Harnesses</h3>
+<p class="sources"><span class="tag code">Repo</span> Daniel Rosehill · <a href="https://github.com/danielrosehill/AI-Harnesses">github.com/danielrosehill/AI-Harnesses</a></p>
+<p>Comparative notes across harness implementations. Useful for seeing how the same primitives get named differently by each tool.</p>
+
+<h3>Harness-Engineering notes</h3>
+<p class="sources"><span class="tag primary">Notes</span> <a href="https://prg.sh/notes/Harness-Engineering">prg.sh/notes</a></p>
+<p>Independent practitioner notes. Short, and useful as a check on whether the vendor consensus survives contact with someone not selling anything.</p>
+
+<hr>
+
+<h2>Named but not read closely</h2>
+
+<p>Flagged for honesty — these are referenced in the course but I did not verify their contents in depth, so treat any claim attributed to them as second-hand:</p>
+
+<ul class="sources">
+<li><strong>ETH Zurich study on AGENTS.md efficacy (2026)</strong> — cited in Module 04 as a pointer only. The claim that instruction-file benefits are more modest than practitioner enthusiasm suggests is <em>not</em> verified here.</li>
+<li><strong>Terminal Bench 2.0 leaderboard</strong> — the ~#33 versus ~#5 figures circulate through Trivedy and HumanLayer. I did not check the leaderboard directly. Ranks approximate; magnitude corroborated independently.</li>
+<li><strong>OpenAI on harness engineering</strong> — the six-hour Codex run figure comes from their published material via secondary citation.</li>
+<li><strong>arXiv 2602.11988</strong> — retrieved during the source sweep, not load-bearing for any claim in these lessons.</li>
+</ul>
+
+<h2>Extracted text on disk</h2>
+
+<p>While compiling these lessons, full text for the main sources was extracted to <code>~/harness-engineering/sources/</code>. Those files are <strong>not redistributed in this repository</strong> — every source above links to its original. If you want a local corpus to grep rather than re-fetching several slow or JS-heavy pages, re-extract them yourself from the links.</p>
+
+<div class="pager">
+  <a href="lessons/09-ablation-and-restraint.html">← Module 09</a>
+  <a class="to-right" href="index.html">Syllabus →</a>
+</div>
+
+</div>
+</body>
+</html>

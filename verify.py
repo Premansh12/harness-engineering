@@ -45,6 +45,22 @@ for path in sorted(html_files):
 
 print(f"html files : {len(html_files)}")
 print(f"checks     : {checked}")
+
+# --- cross-platform sanity: the bash shim must translate the POSIX commands
+# --- the walkthroughs use, and the security contract must hold everywhere.
+sys.path.insert(0, os.path.join(ROOT, "lab"))
+try:
+    import harness_lab
+    t = harness_lab.make_bash_tool(os.path.join(ROOT, "lab", "_ws_verify"),
+                                   allow=("echo", "ls"))
+    if not t.fn(cmd="rm -rf /").startswith("BLOCKED"):
+        problems.append("bash tool: allow-list failed to block 'rm'")
+    if "exit=0" not in t.fn(cmd="echo ok"):
+        problems.append("bash tool: allow-listed 'echo' did not succeed")
+    print(f"platform   : {os.name} — bash allow-list and exit contract OK")
+except Exception as exc:
+    problems.append(f"harness_lab import/self-test failed: {exc!r}")
+
 if problems:
     print(f"\nPROBLEMS ({len(problems)}):")
     for p in problems:

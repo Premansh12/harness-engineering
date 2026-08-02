@@ -28,25 +28,105 @@ The sharpest available evidence for the size of this effect comes from Terminal 
 | 08 | Evaluating harnesses honestly | `lab/w08_ablation.py` |
 | 09 | Ablation, and the discipline of deleting | `lab/w08_ablation.py` + capstone |
 
-## Getting started
+## How to use this repository
 
-Open `index.html` in a browser. That's the whole thing — no build step, no dependencies.
+You only need two things: a way to read the HTML lessons and a Python 3 interpreter to run the walkthroughs. A code editor that opens the `.html` files and a terminal are enough. Below are setup paths for five common setups — pick whichever you already have.
+
+> **Heads-up on the walkthroughs:** they run against a scripted `FakeModel` — **Python 3 standard library only, no `pip install`, no API key, no network, no cost.** They finish in under a second. That is deliberate, not a cut corner: you are studying *harness* behaviour, so the model is held perfectly constant. Every figure quoted in the lessons is real output from these scripts.
+>
+> **Heads-up on Windows:** the walkthroughs shell out to a few POSIX commands (`wc`, `ls`, `cat`). On native Windows `cmd.exe` / PowerShell those don't exist, so the lab runtime **shims them** to equivalent Windows commands under the hood. The lessons still teach the harness mechanics — allow-lists, blocking, exit codes — and the observed behaviour is identical. No action needed from you; just run them from a terminal with Python 3 on PATH.
+
+### Option A — Plain terminal (macOS / Linux / WSL)
 
 ```bash
 git clone https://github.com/Premansh12/harness-engineering.git
 cd harness-engineering
-open index.html          # macOS
-```
+python3 --version            # any 3.9+ is fine
+open index.html              # or: xdg-open index.html  (Linux)
 
-Then run the walkthroughs as you reach them:
-
-```bash
+# run a walkthrough as you reach it
 python3 lab/w01_loop.py
 ```
 
-**Python 3 standard library only.** No install, no API key, no network, no cost. Every walkthrough runs against a scripted `FakeModel` and finishes in under a second.
+If `python3` is missing, install it: `brew install python` (macOS) or your distro's package manager.
 
-That is not a budget compromise — it is the correct experimental design. You are studying *harness* behaviour, so the model must be held perfectly constant. A real model introduces run-to-run variance that swamps the effect you are trying to see. Module 09 shows how to swap in a live model: implement one method.
+### Option B — Windows PowerShell
+
+```powershell
+git clone https://github.com/Premansh12/harness-engineering.git
+cd harness-engineering
+python --version             # any 3.9+; on Windows the binary is `python`
+
+# open the landing page
+start index.html
+
+# run a walkthrough
+python lab\w01_loop.py
+```
+
+If `python` isn't found, install Python 3 from [python.org](https://www.python.org/downloads/windows/) and tick **"Add Python to PATH"** during setup. For `git`, install [Git for Windows](https://git-scm.com/downloads/win).
+
+### Option C — Claude Code
+
+> The `npm install -g @anthropic-ai/claude-code` command is **deprecated** — Claude Code moved to a native installer. Use the official one below.
+
+```bash
+# install (macOS / Linux / WSL)
+curl -fsSL https://claude.ai/install.sh | bash
+
+# Windows PowerShell
+irm https://claude.ai/install.ps1 | iex
+```
+
+Then, inside the cloned repo:
+
+```bash
+cd harness-engineering
+claude
+```
+
+Inside Claude Code, point it at a lesson and a script:
+
+```
+read lessons/01-the-loop.html and explain the twelve-line agent, then run
+lab/w01_loop.py and walk me through what the output shows.
+```
+
+Claude Code reads the repo as its working directory, so paths like `lab/w01_loop.py` resolve directly. The walkthroughs are deterministic — useful for asking it to explain *why* a given output appears rather than re-running with a live model.
+
+### Option D — OpenAI Codex CLI
+
+```bash
+npm install -g @openai/codex      # requires Node.js 22+
+codex --version
+```
+
+macOS users can also use Homebrew: `brew install --cask codex`. Then:
+
+```bash
+cd harness-engineering
+codex
+```
+
+In Codex, the same prompt pattern works:
+
+```
+open lessons/03-context-rot.html, then run lab/w03_context.py and tell me
+what the needle test reveals about compaction versus offload.
+```
+
+### Option E — Google Antigravity (agentic IDE)
+
+Antigravity is a **standalone desktop app**, not a package you install from a terminal. Download it from the official page:
+
+- **Download:** https://antigravity.google/download
+- macOS, Windows, and Linux installers are available.
+
+After installing, open Antigravity, point it at the cloned `harness-engineering` folder as your project, and ask it to work through a lesson + walkthrough the same way you would in Claude Code or Codex (Option C / D). The IDE gives you a file tree and chat side-by-side, which suits the read-then-run rhythm of this course.
+
+> Where the others are CLIs you drive from a terminal, Antigravity is a GUI — pick it if you prefer not living in the shell. All five options run the identical Python walkthroughs; only the interface differs.
+
+---
 
 ## What gets measured
 
@@ -63,7 +143,7 @@ Every figure quoted in the lessons is real output from these scripts, not illust
 ## Verify it
 
 ```bash
-python3 verify.py                      # 74 link/structure checks
+python3 verify.py                      # 74 link/structure checks + platform self-test
 for f in lab/w0*.py; do python3 "$f" >/dev/null && echo "OK $f"; done
 ```
 
@@ -75,11 +155,14 @@ sources.html        annotated source map, tiered by weight
 style.css           editorial stylesheet
 lessons/            10 lesson pages
 lab/
-  harness_lab.py    shared runtime — FakeModel, Tool, Harness, policies
+  harness_lab.py    shared runtime — FakeModel, Tool, Harness, policies + Windows shim
   w01…w08_*.py      walkthroughs
-sources/            extracted primary-source text
-verify.py           link and structure checker
+verify.py           link checker + harness self-test
 ```
+
+## Going beyond the fake model
+
+Module 09 shows how to swap in a live model: implement a single `complete()` method that returns either `{"type": "text", "text": ...}` or `{"type": "tool_call", "name": ..., "args": {...}}`. Nothing else in `harness_lab.py` changes. At that point, run each walkthrough `n > 1` and report variance — a single run against a real model is an anecdote, not a measurement.
 
 ## On the sources
 

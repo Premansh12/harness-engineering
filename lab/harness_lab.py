@@ -149,18 +149,58 @@ def make_fs_tools(root):
 
 def make_bash_tool(root, allow=("echo", "ls", "cat", "pytest", "python3", "grep", "wc", "true", "false")):
     """Bash: the general-purpose tool. Allow-listed — the harness decides what
-    the model may run, not the model."""
+    the model may run, not the model.
+
+    Portability note: on native Windows (cmd.exe / PowerShell) the POSIX
+    coreutils below do not exist. Rather than rewrite each walkthrough per
+    platform, we shim the handful of commands the lessons actually use so the
+    OBSERVED BEHAVIOUR is identical everywhere. The allow-list, the blocking,
+    and the exit-code contract are what the lessons teach — not the coreutils.
+    """
     root = os.path.abspath(root)
+    os.makedirs(root, exist_ok=True)
+    is_windows = os.name == "nt"
+
+    def _shim(cmd):
+        """Translate the few POSIX commands used in this course to Windows.
+        Returns the translated command, or None to run a pure-Python fallback."""
+        parts = shlex.split(cmd)
+        prog, args = parts[0], parts[1:]
+        if prog == "wc" and args and args[0] == "-l":
+            return ("python", ["-c",
+                    "import sys;print(sum(1 for _ in open(sys.argv[1])),sys.argv[1])"] + args[1:])
+        if prog == "ls":
+            return ("cmd", ["/c", "dir", "/b"] + args)
+        if prog == "cat":
+            return ("cmd", ["/c", "type"] + [a.replace("/", "\\") for a in args])
+        if prog == "true":
+            return ("cmd", ["/c", "exit", "0"])
+        if prog == "false":
+            return ("cmd", ["/c", "exit", "1"])
+        if prog == "grep":
+            return ("findstr", args)
+        if prog == "python3":
+            return ("python", args)
+        return None
 
     def bash(cmd, **_):
         prog = shlex.split(cmd)[0] if cmd.strip() else ""
         if prog not in allow:
             return f"BLOCKED: '{prog}' is not on the allow-list {sorted(allow)}"
+
+        run_args, use_shell = cmd, True
+        if is_windows:
+            shimmed = _shim(cmd)
+            if shimmed:
+                run_args, use_shell = [shimmed[0]] + shimmed[1], False
+
         try:
-            out = subprocess.run(cmd, shell=True, cwd=root, capture_output=True,
-                                 text=True, timeout=20)
+            out = subprocess.run(run_args, shell=use_shell, cwd=root,
+                                 capture_output=True, text=True, timeout=20)
         except subprocess.TimeoutExpired:
             return "TIMEOUT after 20s"
+        except FileNotFoundError as exc:
+            return f"ERROR: command not available on this platform: {exc}"
         body = (out.stdout + out.stderr).strip()
         return f"exit={out.returncode}\n{body}" if body else f"exit={out.returncode}"
 

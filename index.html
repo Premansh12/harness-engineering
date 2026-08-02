@@ -48,15 +48,28 @@
 <li>Place a harness on the H0–H3 ladder and read a self-evolving paper without hand-waving.</li>
 </ul>
 
-<h2>How the walkthroughs work</h2>
+<h2>How to use the labs</h2>
 
-<p>Each walkthrough runs against a <code>FakeModel</code> that replays a scripted trajectory — deterministic, offline, free, under a second. You are studying the harness, not the model; a scripted model is the correct instrument because it holds the one variable you are not testing perfectly constant.</p>
+<p>A <strong>lab</strong> is a small, runnable Python script in the <code>lab/</code> folder. Each one demonstrates one idea from the course by running a scripted <code>FakeModel</code> through a tiny harness — deterministic, offline, free, under a second. You are studying the harness, not the model; holding the model perfectly constant is the point.</p>
+
+<p><b>Run a lab.</b> Open a terminal in the repo and run the file named at the top of the lesson:</p>
 
 <div class="filename">terminal</div>
 <pre><code>cd ~/harness-engineering
 python3 lab/w01_loop.py</code></pre>
 
-<p>Python 3 standard library only. No install, no key, no network. At Module 09 / 17 you swap the fake model for a real one by implementing a single method.</p>
+<p>Python 3 standard library only. No install, no key, no network. On Windows the commands are the same from PowerShell (<code>python</code> instead of <code>python3</code>, backslashes in paths). Every lab prints a banner, runs the scenario, then reads the result out in plain English — so you see what the run shows before the explanation lands.</p>
+
+<p><b>Read the output.</b> Each lab prints a banner, the run, and a plain-English reading of what the numbers mean. The figures quoted in the lessons (tool-tax chars, the 112x green-run gap, the 96.2% subagent reduction) are produced by these scripts — run them and you will see the same numbers.</p>
+
+<p><b>Change things.</b> Most lessons end with exercises that say "in <code>lab/w0X.py</code>, change Y and watch Z." Open the file in any editor, edit the value, re-run. The <code>harness_lab.py</code> module at the top of <code>lab/</code> holds the shared runtime (<code>FakeModel</code>, tools, the harness loop, the context policies) — read it once and every lab afterwards reads like variation on a theme.</p>
+
+<p><b>Wire a real model in.</b> At Module 09 and the Module 17 capstone you replace the fake model with a live one: implement a single <code>complete()</code> method that returns either <code>{"type": "text", ...}</code> or <code>{"type": "tool_call", ...}</code>. Nothing else in <code>harness_lab.py</code> changes. From there, run each lab <code>n &gt; 1</code> and report variance — one run against a real model is an anecdote, not a measurement.</p>
+
+<div class="box warn">
+  <span class="label">What a lab is not</span>
+  <p>A lab is not a test you pass or fail. It is a demonstration you can poke. The quizzes (scored, saved in your browser) are the check on understanding; the labs are the thing you break on purpose.</p>
+</div>
 
 <hr>
 

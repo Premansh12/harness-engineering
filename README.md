@@ -40,6 +40,27 @@ Part I is practitioner field-report; Part II is the 2026 research literature (th
 | 16 | Production security & HITL | `lab/w16_production.py` |
 | 17 | Capstone: build → observe → evaluate → evolve | — |
 
+## How to use the labs
+
+A **lab** is a small, runnable Python script in `lab/`. Each one demonstrates one idea from the course by running a scripted `FakeModel` through a tiny harness — deterministic, offline, free, under a second. You are studying the harness, not the model; holding the model perfectly constant is the point.
+
+**Run a lab.** Open a terminal in the repo and run the file named at the top of the lesson:
+
+```bash
+cd harness-engineering
+python3 lab/w01_loop.py
+```
+
+Python 3 standard library only. No install, no key, no network. On Windows use PowerShell with `python` instead of `python3` and backslashes in paths. Every lab prints a banner, runs the scenario, then reads the result out in plain English — so you see what the run shows before the explanation lands.
+
+**Read the output.** Each lab prints a banner, the run, and a plain-English reading of the numbers. The figures quoted in the lessons (tool-tax chars, the 112x green-run gap, the 96.2% subagent reduction) are produced by these scripts — run them and you will see the same numbers.
+
+**Change things.** Most lessons end with exercises that say "in `lab/w0X.py`, change Y and watch Z." Open the file in any editor, edit the value, re-run. `harness_lab.py` at the top of `lab/` holds the shared runtime (`FakeModel`, tools, the harness loop, the context policies) — read it once and every lab afterwards reads like a variation on a theme.
+
+**Wire a real model in.** At Module 09 and the Module 17 capstone you replace the fake model with a live one: implement a single `complete()` method returning either `{"type": "text", ...}` or `{"type": "tool_call", ...}`. Nothing else in `harness_lab.py` changes. From there, run each lab `n > 1` and report variance — one run against a real model is an anecdote, not a measurement.
+
+> A lab is not a test you pass or fail. It is a demonstration you can poke. The quizzes (scored, saved in your browser) are the check on understanding; the labs are the thing you break on purpose.
+
 ## How to use this repository
 
 Two things are enough: a way to read the HTML lessons and a Python 3 interpreter to run the walkthroughs. A browser (or a code editor that opens `.html`) and a terminal cover it. Below are setup paths for five common setups — use whichever you already have.

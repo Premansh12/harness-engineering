@@ -13,7 +13,7 @@ The sharpest available evidence for the size of this effect comes from Terminal 
 
 ## Contents
 
-**18 lesson pages** in editorial-styled HTML · **9 runnable walkthroughs** · **scored quizzes with a progress scoreboard** · **annotated source map**
+**18 lesson pages** in editorial-styled HTML · **15 runnable walkthroughs** · **scored quizzes with a progress scoreboard** · **annotated source map**
 
 Part I is practitioner field-report; Part II is the 2026 research literature (the H-ladder, observability, self-evolving harnesses).
 
@@ -29,22 +29,22 @@ Part I is practitioner field-report; Part II is the 2026 research literature (th
 | 07 | Permissions, sandboxes, blast radius | `lab/w07_safety.py` |
 | 08 | Evaluating harnesses honestly | `lab/w08_ablation.py` |
 | 09 | Ablation, and the discipline of deleting | `lab/w08_ablation.py` + capstone |
-| 10 | Defining the harness *(research)* | — |
-| 11 | The H0–H3 maturity ladder *(research)* | — |
-| 12 | Observability & tracing *(research)* | — |
+| 10 | Defining the harness *(research)* | `lab/w10_definition.py` |
+| 11 | The H0–H3 maturity ladder *(research)* | `lab/w11_ladder.py` |
+| 12 | Observability & tracing *(research)* | `lab/w12_observability.py` |
 | 13 | Evaluation tooling *(research)* | `lab/w13_eval.py` |
-| 14 | Self-evolving harnesses *(research)* | — |
-| 15 | Frameworks compared | — |
-| 16 | Production security & HITL | — |
+| 14 | Self-evolving harnesses *(research)* | `lab/w14_self_evolving.py` |
+| 15 | Frameworks compared | `lab/w15_frameworks.py` |
+| 16 | Production security & HITL | `lab/w16_production.py` |
 | 17 | Capstone: build → observe → evaluate → evolve | — |
 
 ## How to use this repository
 
-You only need two things: a way to read the HTML lessons and a Python 3 interpreter to run the walkthroughs. A browser (or a code editor that opens `.html`) and a terminal are enough. Below are setup paths for five common setups — pick whichever you already have.
+Two things are enough: a way to read the HTML lessons and a Python 3 interpreter to run the walkthroughs. A browser (or a code editor that opens `.html`) and a terminal cover it. Below are setup paths for five common setups — use whichever you already have.
 
-> **Heads-up on the walkthroughs:** they run against a scripted `FakeModel` — **Python 3 standard library only, no `pip install`, no API key, no network, no cost.** They finish in under a second. That is deliberate, not a cut corner: you are studying *harness* behaviour, so the model is held perfectly constant. Every figure quoted in the lessons is real output from these scripts.
->
-> **Heads-up on Windows:** the walkthroughs shell out to a few POSIX commands (`wc`, `ls`, `cat`). On native Windows `cmd.exe` / PowerShell those don't exist, so the lab runtime **shims them** to equivalent Windows commands under the hood. The observed behaviour (allow-lists, blocking, exit codes) is identical. No action needed — just run them from a terminal with Python 3 on PATH.
+> **On the walkthroughs:** they run against a scripted `FakeModel` — **Python 3 standard library only, no `pip install`, no API key, no network, no cost.** They finish in under a second. That is deliberate, not a cut corner: you are studying *harness* behaviour, so the model is held perfectly constant. Every figure quoted in the lessons is real output from these scripts.
+
+> **On Windows:** the walkthroughs shell out to a few POSIX commands (`wc`, `ls`, `cat`). On native Windows those don't exist, so the lab runtime **shims them** to equivalent Windows commands under the hood. The observed behaviour (allow-lists, blocking, exit codes) is identical. No action needed — just run them from a terminal with Python 3 on PATH.
 
 ### Option A — Plain terminal (macOS / Linux / WSL)
 
@@ -123,23 +123,45 @@ what the needle test reveals about compaction versus offload." --sandbox workspa
 
 ### Option E — Google Antigravity
 
-Antigravity is a **standalone desktop app**, not a package you install from a terminal. Download it from the official page:
+Antigravity ships as a **desktop app** and as a CLI (`agy`). Use either — the course material is identical; only the interface changes.
 
-- **Download:** https://antigravity.google/download
-- macOS, Windows, and Linux installers are available.
+**Install the app (interactive, file-tree + chat side-by-side):**
 
-After installing, open Antigravity, point it at the cloned `harness-engineering` folder as your project, and ask it to work through a lesson + walkthrough the same way you would in Claude Code or Codex (Option C / D). The IDE gives you a file tree and chat side-by-side, which suits the read-then-run rhythm of this course.
+- Download from https://antigravity.google/download (macOS, Windows, Linux installers)
+- Open it, point it at the cloned `harness-engineering` folder as your project
+- Work through a lesson + walkthrough the same way you would in Claude Code (Option C)
 
-For one-shots you can also drive the CLI directly (non-interactive):
+**Or install just the CLI and drive it from the terminal:**
+
+```bash
+agy install                 # puts `agy` on PATH
+command -v agy && agy --version
+```
+
+`agy` manages its own auth (OS keyring, or a browser sign-in prompt on first run) — no API key to paste.
+
+**Learn from the repo with `agy` — two patterns:**
+
+One-shot, non-interactive (good for "explain this lesson, run that script"):
 
 ```bash
 cd harness-engineering
-agy --print "read lessons/01-the-loop.html, run lab/w01_loop.py, and explain the failure modes." --model 'Claude Opus 4.6 (Thinking)'
+agy -p "read lessons/01-the-loop.html, run lab/w01_loop.py, and explain the three failure modes." \
+     --model 'Claude Opus 4.6 (Thinking)'
 ```
 
-Note: `agy -p` prints plain text (no JSON envelope) and is bounded by `--print-timeout` (default `5m`) — there is **no** `--max-turns`. Raise it for long tasks: `--print-timeout 20m`.
+`agy -p` prints plain text (no JSON envelope) and is bounded by `--print-timeout` (default `5m`) — there is **no** `--max-turns`. Raise it for long tasks: `--print-timeout 20m`.
 
-> Where Claude Code and Codex are CLIs you drive from a terminal, Antigravity is a GUI — pick it if you prefer not living in the shell. All five options run the identical Python walkthroughs; only the interface differs.
+Interactive, multi-turn (the read-then-run rhythm of this course — ask follow-ups, change a script, re-run):
+
+```bash
+cd harness-engineering
+agy                       # opens the TUI; /open lessons/12-observability.html, then run lab/w12_observability.py
+```
+
+Inside the TUI: `/open <path>` loads a lesson, `!` runs a shell command (so `!python3 lab/w12_observability.py` runs a walkthrough without leaving the session), and `/model` switches the engine. Resume a prior session with `agy -c`. To pull in material outside the repo as context, pass `--add-dir /path/to/notes`.
+
+> Antigravity is a GUI or a CLI; Claude Code and Codex are CLIs you drive from a shell. All five options run the identical Python walkthroughs — pick the interface you like living in.
 
 ---
 
@@ -169,11 +191,13 @@ index.html          syllabus, hub, progress scoreboard
 sources.html        annotated source map, tiered by weight
 style.css           editorial stylesheet
 assets.js           quiz engine + localStorage progress
+assets/hero.png     syllabus screenshot banner
 voices.md           harvested leader quotes (dated, linked)
 lessons/            18 lesson pages (00–17)
 lab/
   harness_lab.py    shared runtime — FakeModel, Tool, Harness, policies + Windows shim
   w01…w08_*.py      walkthroughs
+  w10…w16_*.py      research + production walkthroughs
   w13_eval.py       runnable eval (harness-evals-shaped, stdlib only)
 verify.py           link checker + harness self-test + quiz validation
 ```

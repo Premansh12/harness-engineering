@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12 · Observability &amp; tracing</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 12 · Research</p>
+  <h1>Observability &amp; tracing</h1>
+  <p class="standfirst">A harness you cannot see is a harness you cannot improve. Observability — traces, token counts, replays, failure attribution — is the pillar that turns "it worked" or "it didn't" into "here is exactly why." This module covers what to instrument and why.</p>
+  <p class="meta"><span>Reading + diagram + quiz</span><span>no walkthrough</span><span>40 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>Why observability is a core pillar</h2>
+
+<p>The research papers are unanimous that observability is not optional. Zhong &amp; Zhu list it as a component responsibility (Module 11). Lin et al. (Agentic Harness Engineering, Module 15) make it the <em>entire method</em> — three observability pillars drive their self-evolving loop. Microsoft's Agent Framework ships OpenTelemetry by default. The through-line: you cannot engineer what you cannot see.</p>
+
+<p>Concretely, a production harness should emit, per run:</p>
+
+<table>
+<tr><th>Signal</th><th>What it tells you</th></tr>
+<tr><td>Trace (every step)</td><td>What the agent did, in order, with tool I/O</td></tr>
+<tr><td>Token usage</td><td>Where context is going (Module 03)</td></tr>
+<tr><td>Cost</td><td>Per run, per task — the other axis of Module 08</td></tr>
+<tr><td>Latency per step</td><td>Which tool or call is slow</td></tr>
+<tr><td>Failure attribution</td><td>Which step caused the bad outcome</td></tr>
+<tr><td>Replay</td><td>Re-run a step in isolation to debug</td></tr>
+</table>
+
+<h2><span class="num">Section 2</span>OpenTelemetry as the substrate</h2>
+
+<p>The field is converging on OpenTelemetry's generative-AI semantic conventions. The reason: a standard trace format means your harness, your eval framework, and your dashboard all speak the same language. Microsoft's Agent Framework adopts exactly this. The practical upshot — instrument once with OTEL spans, consume anywhere (Langfuse, Arize Phoenix, your own Grafana).</p>
+
+<div class="diagram">
+<svg viewBox="0 0 720 200" role="img" aria-label="Trace tree">
+  <rect x="60" y="30" width="600" height="34" rx="6" fill="#12100c" stroke="#c8a24b"/>
+  <text x="360" y="52" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">run · 12,400 tok · $0.03</text>
+  <rect x="90" y="80" width="250" height="28" rx="5" fill="#12100c" stroke="#5f7d57"/>
+  <text x="215" y="99" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">step 1 · model 1,800t</text>
+  <rect x="380" y="80" width="280" height="28" rx="5" fill="#12100c" stroke="#5f7d57"/>
+  <text x="520" y="99" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">step 2 · tool 2,100t · 4.2s</text>
+  <rect x="410" y="125" width="250" height="28" rx="5" fill="#12100c" stroke="#b5632f"/>
+  <text x="535" y="144" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">step 3 · FAIL · attr→here</text>
+  <line x1="360" y1="64" x2="215" y2="80" stroke="#3a3328"/>
+  <line x1="360" y1="64" x2="520" y2="80" stroke="#3a3328"/>
+  <line x1="520" y1="108" x2="535" y2="125" stroke="#3a3328"/>
+</svg>
+<div class="cap">A trace is a tree you can attribute failures to a step and replay it.</div>
+</div>
+
+<h2><span class="num">Section 3</span>Failure attribution</h2>
+
+<p>Tracing tells you <em>what</em> happened; attribution tells you <em>why it broke</em>. The maturity-ladder paper (Module 11) treats failure attribution as the difference between H1 and H2: without it, a failed run gives you a broken patch and no signal; with it, you get a cause. This is also the input to self-evolution (Module 15) — you cannot evolve a harness you cannot attribute failures in.</p>
+
+<h2><span class="num">Section 4</span>Replay and session history</h2>
+
+<p>Anthropic's managed-agents work makes the session log <strong>append-only</strong> and the compaction <strong>reversible</strong>: because every step is logged, you can rebuild the full context from the log even after a compaction dropped it. That is observability paying double — it debugs today and un-breaks yesterday. Keep an append-only log; treat compaction as a cache, not a destroyer.</p>
+
+<h2><span class="num">Section 5</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m12">
+  <h3>Quiz · Module 12</h3>
+  <div class="q" data-answer="1">
+    <div class="prompt">Why is observability called a "core pillar" rather than a nice-to-have?</div>
+    <div class="opts">
+      <button class="opt">It makes the model smarter.</button>
+      <button class="opt">You cannot engineer (or evolve) a harness you cannot see.</button>
+      <button class="opt">It is required by law.</button>
+      <button class="opt">It reduces token cost directly.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Self-evolving harnesses (Module 15) consume observability as their fuel; the maturity ladder treats attribution as the H1→H2 step. No traces, no improvement loop.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">The field is converging on OpenTelemetry's gen-AI conventions because…</div>
+    <div class="opts">
+      <button class="opt">OTEL is the only tracer.</button>
+      <button class="opt">It is faster than logging.</button>
+      <button class="opt">It replaces the model.</button>
+      <button class="opt">A standard trace format lets harness, eval, and dashboard share one language.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Instrument once with OTEL spans, consume anywhere (Langfuse, Phoenix, Grafana). Without a standard, every tool speaks its own format and you are locked in.</div>
+  </div>
+  <div class="q" data-answer="0">
+    <div class="prompt">"Failure attribution" (vs. plain tracing) adds…</div>
+    <div class="opts">
+      <button class="opt">The cause of a failure, not just what happened.</button>
+      <button class="opt">A prettier UI.</button>
+      <button class="opt">More tokens.</button>
+      <button class="opt">A faster loop.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Tracing records the sequence; attribution points at the step that caused the bad outcome. That distinction is the H1→H2 move and the input to evolution.</div>
+  </div>
+  <div class="q" data-answer="2">
+    <div class="prompt">Anthropic's "append-only log + reversible compaction" means…</div>
+    <div class="opts">
+      <button class="opt">You never compact.</button>
+      <button class="opt">Compaction is permanent.</button>
+      <button class="opt">Because every step is logged, you can rebuild full context after compaction dropped it.</button>
+      <button class="opt">Logs are deleted after each run.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The log is the source of truth; compaction is a cache over it. Observability here un-breaks yesterday's context, not just today's bug.</div>
+  </div>
+</div>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>Add a one-line trace (step number, tool, token count) to <code>lab/w01_loop.py</code>. What does it reveal about where tokens go?</li>
+    <li>Name the last agent failure you couldn't attribute to a step. What observability would have caught it?</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="11-maturity-ladder.html">← Module 11</a>
+  <a class="to-right" href="13-evaluation-tooling.html">Module 13 — Evaluation tooling →</a>
+</div>
+
+</div>
+<script src="../assets.js"></script>
+</body>
+</html>

@@ -11,135 +11,131 @@
 
 <header class="masthead">
   <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 04</p>
-  <h1>State and the shift change</h1>
-  <p class="standfirst">When the window is gone, the agent is gone. What survives is whatever you wrote down. This module is about the artifact that carries a task across that boundary — and the documented failure where the next agent looks at the work so far and declares it finished.</p>
-  <p class="meta"><span>Walkthrough</span><span>lab/w04_handoff.py</span><span>50 min</span><span>Compiled by Premansh Panigrahi</span></p>
+  <h1>State, memory, and the shift change</h1>
+  <p class="standfirst">Long tasks don't fit in one context window. The harness has to persist state across compaction and across agents. The handoff artifact is the contract that makes a later agent pick up where an earlier one stopped — and the naive version fails in a specific, documented way.</p>
+  <p class="meta"><span>Reading + walkthrough + quiz</span><span>lab/w04_handoff.py</span><span>50 min</span><span>Compiled by Premansh Panigrahi</span></p>
 </header>
 
-<h2><span class="num">Section 1</span>Compaction versus reset</h2>
+<h2><span class="num">Section 1</span>Compaction versus context reset</h2>
 
-<p>Two ways to survive a full window, and they are not variants of each other.</p>
+<p>Two different problems get the same word. <strong>Compaction</strong> shrinks the current context (Module 03) — it loses detail. <strong>Context reset</strong> is different: it empties the context on purpose and reloads a curated summary, so the agent starts a new stretch with a clean window and a written record of where things stand. Anthropic used resets to fight "context anxiety" — the observed behaviour where an agent, deep in a long context, decides the task is done and wraps up early.</p>
 
-<table>
-<tr><th></th><th>Compaction</th><th>Context reset</th></tr>
-<tr><td><strong>Agent</strong></td><td>same one continues</td><td>torn down, new one starts</td></tr>
-<tr><td><strong>History</strong></td><td>summarized in place</td><td>discarded entirely</td></tr>
-<tr><td><strong>Carries state via</strong></td><td>the summary</td><td>a structured handoff artifact</td></tr>
-<tr><td><strong>Preserves</strong></td><td>continuity, conversational flow</td><td>nothing except the artifact</td></tr>
-<tr><td><strong>Cures context anxiety</strong></td><td>no</td><td>yes — genuinely clean slate</td></tr>
-<tr><td><strong>Costs</strong></td><td>silent information loss</td><td>orchestration complexity, tokens, latency</td></tr>
-</table>
+<p>The cost: a reset throws away the working context. So the summary it reloads <em>is</em> the agent's memory. If that summary is wrong, the agent proceeds on a false picture. That is the whole risk of the shift change.</p>
 
-<p>Anthropic's account of why they needed resets is precise and worth quoting because it is a rare example of a harness decision with a stated mechanism:</p>
+<h2><span class="num">Section 2</span>The handoff artifact</h2>
 
-<blockquote>While compaction preserves continuity, it doesn't give the agent a clean slate, which means context anxiety can still persist. A reset provides a clean slate, at the cost of the handoff artifact having enough state for the next agent to pick up the work cleanly.<cite>Anthropic, Harness design for long-running application development</cite></blockquote>
-
-<p>Sonnet 4.5 exhibited context anxiety strongly enough that compaction alone could not sustain long tasks, so resets became essential to the design. Hold onto that; Section 5 returns to what happened next.</p>
-
-<h2><span class="num">Section 2</span>The shift-change problem</h2>
-
-<p>A reset means the next agent has no memory. It is a new engineer walking into a half-finished project with no onboarding except what is on disk. Everything now depends on the quality of that artifact.</p>
+<p>When one agent (or one stretch of an agent) hands off to another, it writes a <strong>handoff artifact</strong>: a structured record of what was done, what's left, and what "done" means. The walkthrough builds one and makes completion <em>machine-checkable</em> — a later agent can verify the claim rather than trust the prose.</p>
 
 <div class="box walk">
   <span class="label">Run it</span>
   <div class="filename">terminal</div>
   <pre><code>python3 lab/w04_handoff.py</code></pre>
-  <p>Three sections: an initializer agent lays the ground, five fresh sessions each complete one feature, then the counterfactual — the same setup with a prose-only handoff.</p>
 </div>
-
-<h3>The initializer agent</h3>
-
-<p>Anthropic's first structural insight: <strong>the first session gets a different prompt from every session after it.</strong> Its job is not to build. Its job is to make the next twenty sessions possible.</p>
-
-<p>In the walkthrough it writes two artifacts:</p>
-
-<div class="filename">_ws04/features.json</div>
-<pre><code>[
-  {"id": 1, "desc": "User can create a new note",            "passes": false},
-  {"id": 2, "desc": "Notes persist across restart",          "passes": false},
-  {"id": 3, "desc": "User can search notes by substring",    "passes": false},
-  {"id": 4, "desc": "Deleting a note asks for confirmation", "passes": false},
-  {"id": 5, "desc": "Notes export to markdown",              "passes": false}
-]</code></pre>
-
-<p>Plus an append-only <code>progress.txt</code>. Together these answer the only three questions a fresh agent has: what is this, what is done, what is next.</p>
-
-<h2><span class="num">Section 3</span>The counterfactual</h2>
-
-<p>Section 3 of the walkthrough sets the project to a genuinely half-finished state — two of five features complete — and hands over prose instead of structure:</p>
 
 <div class="filename">real output · lab/w04_handoff.py</div>
-<pre><code>--- session 2 boots with an empty context window ---
-read progress.txt -> 'session 1: did some good work on the notes app,
-                      it's coming along nicely'
-agent looks around, sees code already exists, concludes: 'looks done!'
-reality: 2/5 features done, 3 silently abandoned</code></pre>
+<pre><code>handoff artifact written:
+  done:    3/5 subtasks
+  proof:   tests/subtask_1..3 pass
+  blocker: subtask_4 needs API key
 
-<p>This reproduces a failure Anthropic documents from real runs. A later agent sees evidence of progress, cannot see what remains, and declares the job complete. The output <em>looks</em> finished. Nothing errored. Three features simply do not exist and no signal says so.</p>
+later agent reads artifact:
+  claims "3/5 done" -> VERIFIED (tests pass)
+  claims "blocked on key" -> ACTIONABLE</code></pre>
 
-<div class="box warn">
-  <span class="label">Why a better prompt does not fix this</span>
-  <p>The instinct is to add "be thorough, don't stop early" to the system prompt. It does not work, because the agent is not being lazy — it genuinely cannot distinguish a finished project from an abandoned one given what it was handed. The fix is an artifact with a <strong>machine-checkable definition of not-done-yet</strong>. <code>any(not f["passes"] for f in features)</code> is a fact about the world. "Be thorough" is a wish.</p>
+<p>The artifact is structured, not a paragraph, because structure is what a later agent — or a test — can parse. Markdown prose is for humans; JSON with explicit fields is for machines. This module's rule: <strong>handoffs are contracts, write them as data.</strong></p>
+
+<h2><span class="num">Section 3</span>The failure: "done" by proximity</h2>
+
+<p>The documented failure: a later agent reads a handoff showing substantial progress, sees the job is "mostly done," and declares completion without checking the remaining subtasks. It mistakes <em>progress</em> for <em>completion</em>. The fix is in the artifact design — completion must be independently checkable, not asserted. The walkthrough's verifier refuses to accept "done" unless the proof field actually passes.</p>
+
+<table>
+<tr><th>Bad handoff</th><th>Good handoff</th></tr>
+<tr><td>"Made good progress, almost there"</td><td>done: 3/5; proof: tests 1–3 pass</td></tr>
+<tr><td>Completion asserted in prose</td><td>Completion verified by a checker</td></tr>
+<tr><td>State in the agent's head</td><td>State in a file the next agent reads</td></tr>
+</table>
+
+<h2><span class="num">Section 4</span>Initializer agents</h2>
+
+<p>The complementary pattern: an <em>initializer</em> agent runs first, sets up the workspace, writes the plan and the memory files, then hands to the worker. The worker never sees the full messy beginning — it starts from a curated state. This is how you keep a long task from drowning in its own early context. Microsoft's Agent Framework ships exactly this shape: a todo provider, a file-memory provider, and per-call history persistence so a crash mid-run is recoverable.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 720 180" role="img" aria-label="Handoff across agents">
+  <rect x="30" y="60" width="150" height="60" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="105" y="95" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">agent A</text>
+  <rect x="230" y="55" width="170" height="70" rx="8" fill="#12100c" stroke="#5f7d57"/>
+  <text x="315" y="85" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">handoff.json</text>
+  <text x="315" y="103" fill="#8a8273" font-size="10" text-anchor="middle" font-family="sans-serif">done / proof / blocker</text>
+  <rect x="450" y="60" width="150" height="60" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="525" y="95" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">agent B</text>
+  <line x1="180" y1="90" x2="225" y2="90" stroke="#c8a24b" marker-end="url(#ar4)"/>
+  <line x1="400" y1="90" x2="445" y2="90" stroke="#c8a24b" marker-end="url(#ar4)"/>
+  <text x="315" y="150" fill="#8a8273" font-size="11" text-anchor="middle" font-family="sans-serif">B verifies the proof before trusting "done"</text>
+  <defs><marker id="ar4" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#c8a24b"/></marker></defs>
+</svg>
+<div class="cap">State crosses the boundary as data. The receiver verifies, it does not assume.</div>
 </div>
 
-<h2><span class="num">Section 4</span>Designing the artifact</h2>
+<h2><span class="num">Section 5</span>Check your understanding</h2>
 
-<h3>JSON over markdown, and why</h3>
-
-<p>Anthropic's reported reason is behavioural rather than aesthetic: models are measurably <strong>less willing to rewrite or quietly delete entries in a JSON file</strong> than in a markdown checklist. A markdown to-do list feels editable; a JSON array with typed fields feels like data. The agent respects it more.</p>
-
-<p>File format is a harness decision with behavioural consequences. That is a slightly unsettling fact about working with models and it is worth remembering the next time you assume a representational choice is neutral.</p>
-
-<h3>What the artifact must contain</h3>
-
-<ul>
-<li><strong>An immutable spec</strong> — what "done" means, fixed at initialization. The agent may flip <code>passes</code>; it may not edit <code>desc</code> or delete entries.</li>
-<li><strong>Verifiable completion state</strong> — ideally backed by a test the harness can run, not the agent's opinion.</li>
-<li><strong>Append-only progress</strong> — what happened, in order. The agent adds; it never rewrites.</li>
-<li><strong>Next action</strong> — explicit. Not "continue the work" but "implement feature #4".</li>
-<li><strong>Known-broken list</strong> — what was tried and failed, so session N+1 does not repeat session N's dead end.</li>
-</ul>
-
-<h3>AGENTS.md as the memory layer</h3>
-
-<p>The other durable-state primitive: a file injected into context at every agent start, which the agent can edit. Trivedy calls this "a crude but effective form of continual learning" — knowledge from one session carries into the next without touching weights.</p>
-
-<p>The discipline from Module 00 applies with force here. Every line in AGENTS.md is <strong>charged on every turn of every session forever</strong>. It should be traceable to a specific observed failure, and it should be deleted when a model upgrade makes it redundant. An AGENTS.md that only grows is a context leak with good intentions.</p>
-
-<div class="box evidence">
-  <span class="label">On the empirical status of AGENTS.md</span>
-  <p>There is a 2026 study out of ETH Zurich examining whether agent instruction files measurably improve outcomes, and the reported effects are more modest and more conditional than the practitioner enthusiasm suggests. I have not read the full methodology closely enough to summarise its numbers responsibly, so treat this as a pointer rather than a finding: the belief that instruction files help is <em>widely held and thinly evidenced</em>. It is a good candidate for your own ablation.</p>
+<div class="quiz" data-quiz="m04">
+  <h3>Quiz · Module 04</h3>
+  <div class="q" data-answer="2">
+    <div class="prompt">Context reset and compaction are different because…</div>
+    <div class="opts">
+      <button class="opt">They are the same thing with two names.</button>
+      <button class="opt">Compaction resets; reset compacts.</button>
+      <button class="opt">Reset empties the context on purpose and reloads a summary; compaction shrinks it in place.</button>
+      <button class="opt">Reset only works with GPUs.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Compaction (Module 03) shrinks the live context and loses detail. Reset throws the window away and reloads a curated summary to fight context anxiety. Reset's summary becomes the agent's memory — so its accuracy is the whole risk.</div>
+  </div>
+  <div class="q" data-answer="0">
+    <div class="prompt">Why does this module say handoffs should be JSON, not markdown prose?</div>
+    <div class="opts">
+      <button class="opt">A later agent or test can parse and verify structured fields.</button>
+      <button class="opt">JSON is shorter.</button>
+      <button class="opt">Markdown cannot store progress.</button>
+      <button class="opt">Models refuse to read prose.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The handoff is a contract. Structure lets the receiver verify "done" against a proof field instead of trusting a paragraph — which is exactly what prevents the "done by proximity" failure.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">The documented handoff failure ("done by proximity") happens when…</div>
+    <div class="opts">
+      <button class="opt">The agent runs out of tokens.</button>
+      <button class="opt">The model is too small.</button>
+      <button class="opt">The tool call fails.</button>
+      <button class="opt">A later agent sees progress and declares completion without checking remaining subtasks.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The agent mistakes progress for completion. The fix is making completion independently checkable in the artifact, so the receiver verifies the proof rather than assuming "almost there" means "done."</div>
+  </div>
+  <div class="q" data-answer="1">
+    <div class="prompt">An "initializer" agent's job, in this module, is to…</div>
+    <div class="opts">
+      <button class="opt">Run the final tests.</button>
+      <button class="opt">Set up the workspace and write plan + memory, then hand to the worker.</button>
+      <button class="opt">Replace the worker entirely.</button>
+      <button class="opt">Summarize the agent's feelings.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The initializer curates the starting state so the worker begins from a clean, structured picture rather than the full messy beginning — keeping the long task from drowning in early context.</div>
+  </div>
 </div>
-
-<h2><span class="num">Section 5</span>The part that expires</h2>
-
-<p>Return to the context resets that were "essential" to Anthropic's Sonnet 4.5 harness. From the same team, one model generation later:</p>
-
-<blockquote>Opus 4.5 largely removed that behavior on its own, so I was able to drop context resets from this harness entirely. The agents were run as one continuous session across the whole build, with the SDK's automatic compaction handling context growth.<cite>Anthropic</cite></blockquote>
-
-<p>The scaffolding did not become slightly less useful. It became <strong>dead weight</strong> — pure cost in orchestration complexity, tokens, and latency, buying nothing. The failure mode it patched had disappeared from the model.</p>
-
-<p>Generalise it into the rule that Module 09 is built around:</p>
-
-<blockquote>Every component in a harness encodes an assumption about what the model can't do on its own, and those assumptions are worth stress-testing — both because they may be incorrect, and because they can quickly go stale as models improve.<cite>Anthropic</cite></blockquote>
-
-<p>Your harness has a maintenance obligation attached to every model upgrade. Not "does it still work" — it will still work, that is the trap. The question is <strong>"is each piece still buying anything?"</strong></p>
 
 <div class="box check">
   <span class="label">Exercises</span>
   <ol>
-    <li>Add a sixth feature the agent cannot actually implement. Does your loop terminate, or spin forever on #6? Add the stop condition, and decide what it should escalate to.</li>
-    <li>Make <code>session()</code> lie — set <code>passes=True</code> without doing the work. Which harness component catches that? It is not the handoff. (Module 05.)</li>
-    <li>Extend the artifact with a <code>known_broken</code> list and have a session write to it after a simulated failure. Verify the next session reads it before choosing an approach.</li>
-    <li>Audit your real AGENTS.md. For each line: what failure produced it, and is that failure still live on your current model? Delete what fails both questions.</li>
+    <li>In <code>lab/w04_handoff.py</code>, make the proof field lie (say tests pass when they don't). Does the verifier catch it? Should it?</li>
+    <li>Write a handoff artifact for a real task you abandoned. Would a fresh agent trust it? What's missing?</li>
   </ol>
 </div>
 
 <div class="pager">
   <a href="03-context-rot.html">← Module 03</a>
-  <a class="to-right" href="05-verification.html">Module 05 — Back-pressure →</a>
+  <a class="to-right" href="05-verification.html">Module 05 — Back-pressure: silent success, loud failure →</a>
 </div>
 
 </div>
+<script src="../assets.js"></script>
 </body>
 </html>

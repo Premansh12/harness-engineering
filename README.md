@@ -13,7 +13,9 @@ The sharpest available evidence for the size of this effect comes from Terminal 
 
 ## Contents
 
-**10 lesson pages** in editorial-styled HTML · **8 runnable walkthroughs** · **annotated source map**
+**18 lesson pages** in editorial-styled HTML · **9 runnable walkthroughs** · **scored quizzes with a progress scoreboard** · **annotated source map**
+
+Part I is practitioner field-report; Part II is the 2026 research literature (the H-ladder, observability, self-evolving harnesses).
 
 | # | Module | Walkthrough |
 |---|--------|-------------|
@@ -27,14 +29,22 @@ The sharpest available evidence for the size of this effect comes from Terminal 
 | 07 | Permissions, sandboxes, blast radius | `lab/w07_safety.py` |
 | 08 | Evaluating harnesses honestly | `lab/w08_ablation.py` |
 | 09 | Ablation, and the discipline of deleting | `lab/w08_ablation.py` + capstone |
+| 10 | Defining the harness *(research)* | — |
+| 11 | The H0–H3 maturity ladder *(research)* | — |
+| 12 | Observability & tracing *(research)* | — |
+| 13 | Evaluation tooling *(research)* | `lab/w13_eval.py` |
+| 14 | Self-evolving harnesses *(research)* | — |
+| 15 | Frameworks compared | — |
+| 16 | Production security & HITL | — |
+| 17 | Capstone: build → observe → evaluate → evolve | — |
 
 ## How to use this repository
 
-You only need two things: a way to read the HTML lessons and a Python 3 interpreter to run the walkthroughs. A code editor that opens the `.html` files and a terminal are enough. Below are setup paths for five common setups — pick whichever you already have.
+You only need two things: a way to read the HTML lessons and a Python 3 interpreter to run the walkthroughs. A browser (or a code editor that opens `.html`) and a terminal are enough. Below are setup paths for five common setups — pick whichever you already have.
 
 > **Heads-up on the walkthroughs:** they run against a scripted `FakeModel` — **Python 3 standard library only, no `pip install`, no API key, no network, no cost.** They finish in under a second. That is deliberate, not a cut corner: you are studying *harness* behaviour, so the model is held perfectly constant. Every figure quoted in the lessons is real output from these scripts.
 >
-> **Heads-up on Windows:** the walkthroughs shell out to a few POSIX commands (`wc`, `ls`, `cat`). On native Windows `cmd.exe` / PowerShell those don't exist, so the lab runtime **shims them** to equivalent Windows commands under the hood. The lessons still teach the harness mechanics — allow-lists, blocking, exit codes — and the observed behaviour is identical. No action needed from you; just run them from a terminal with Python 3 on PATH.
+> **Heads-up on Windows:** the walkthroughs shell out to a few POSIX commands (`wc`, `ls`, `cat`). On native Windows `cmd.exe` / PowerShell those don't exist, so the lab runtime **shims them** to equivalent Windows commands under the hood. The observed behaviour (allow-lists, blocking, exit codes) is identical. No action needed — just run them from a terminal with Python 3 on PATH.
 
 ### Option A — Plain terminal (macOS / Linux / WSL)
 
@@ -42,7 +52,7 @@ You only need two things: a way to read the HTML lessons and a Python 3 interpre
 git clone https://github.com/Premansh12/harness-engineering.git
 cd harness-engineering
 python3 --version            # any 3.9+ is fine
-open index.html              # or: xdg-open index.html  (Linux)
+xdg-open index.html          # or: open index.html (macOS)
 
 # run a walkthrough as you reach it
 python3 lab/w01_loop.py
@@ -101,21 +111,17 @@ npm install -g @openai/codex      # requires Node.js 22+
 codex --version
 ```
 
-macOS users can also use Homebrew: `brew install --cask codex`. Then:
+macOS users can also use Homebrew: `brew install --cask codex`. Then, from inside the cloned repo (Codex must run inside a git repo):
 
 ```bash
 cd harness-engineering
-codex
+codex exec "open lessons/03-context-rot.html, then run lab/w03_context.py and tell me
+what the needle test reveals about compaction versus offload." --sandbox workspace-write
 ```
 
-In Codex, the same prompt pattern works:
+`--sandbox workspace-write` auto-approves file changes inside the sandbox (the recommended build mode; `--full-auto` is deprecated). Use `codex exec` for one-shots; it runs and exits cleanly.
 
-```
-open lessons/03-context-rot.html, then run lab/w03_context.py and tell me
-what the needle test reveals about compaction versus offload.
-```
-
-### Option E — Google Antigravity (agentic IDE)
+### Option E — Google Antigravity
 
 Antigravity is a **standalone desktop app**, not a package you install from a terminal. Download it from the official page:
 
@@ -124,7 +130,16 @@ Antigravity is a **standalone desktop app**, not a package you install from a te
 
 After installing, open Antigravity, point it at the cloned `harness-engineering` folder as your project, and ask it to work through a lesson + walkthrough the same way you would in Claude Code or Codex (Option C / D). The IDE gives you a file tree and chat side-by-side, which suits the read-then-run rhythm of this course.
 
-> Where the others are CLIs you drive from a terminal, Antigravity is a GUI — pick it if you prefer not living in the shell. All five options run the identical Python walkthroughs; only the interface differs.
+For one-shots you can also drive the CLI directly (non-interactive):
+
+```bash
+cd harness-engineering
+agy --print "read lessons/01-the-loop.html, run lab/w01_loop.py, and explain the failure modes." --model 'Claude Opus 4.6 (Thinking)'
+```
+
+Note: `agy -p` prints plain text (no JSON envelope) and is bounded by `--print-timeout` (default `5m`) — there is **no** `--max-turns`. Raise it for long tasks: `--print-timeout 20m`.
+
+> Where Claude Code and Codex are CLIs you drive from a terminal, Antigravity is a GUI — pick it if you prefer not living in the shell. All five options run the identical Python walkthroughs; only the interface differs.
 
 ---
 
@@ -143,34 +158,46 @@ Every figure quoted in the lessons is real output from these scripts, not illust
 ## Verify it
 
 ```bash
-python3 verify.py                      # 74 link/structure checks + platform self-test
-for f in lab/w0*.py; do python3 "$f" >/dev/null && echo "OK $f"; done
+python3 verify.py                      # link + quiz + platform self-test
+for f in lab/w0*.py lab/w13_eval.py; do python3 "$f" >/dev/null && echo "OK $f"; done
 ```
 
 ## Structure
 
 ```
-index.html          syllabus and hub
+index.html          syllabus, hub, progress scoreboard
 sources.html        annotated source map, tiered by weight
 style.css           editorial stylesheet
-lessons/            10 lesson pages
+assets.js           quiz engine + localStorage progress
+voices.md           harvested leader quotes (dated, linked)
+lessons/            18 lesson pages (00–17)
 lab/
   harness_lab.py    shared runtime — FakeModel, Tool, Harness, policies + Windows shim
   w01…w08_*.py      walkthroughs
-verify.py           link checker + harness self-test
+  w13_eval.py       runnable eval (harness-evals-shaped, stdlib only)
+verify.py           link checker + harness self-test + quiz validation
 ```
 
 ## Going beyond the fake model
 
-Module 09 shows how to swap in a live model: implement a single `complete()` method that returns either `{"type": "text", "text": ...}` or `{"type": "tool_call", "name": ..., "args": {...}}`. Nothing else in `harness_lab.py` changes. At that point, run each walkthrough `n > 1` and report variance — a single run against a real model is an anecdote, not a measurement.
+Module 09 (and the Module 17 capstone) shows how to swap in a live model: implement a single `complete()` method that returns either `{"type": "text", "text": ...}` or `{"type": "tool_call", "name": ..., "args": {...}}`. Nothing else in `harness_lab.py` changes. At that point, run each walkthrough `n > 1` and report variance — a single run against a real model is an anecdote, not a measurement.
 
 ## On the sources
 
 Harness engineering is roughly eighteen months old as a named discipline, and its canon is written almost entirely by people selling something adjacent — model providers, framework vendors, consultancies. The engineering is good; the framing is not neutral and negative results are underreported.
 
-Each lesson separates **measured findings** from **working heuristics**. `sources.html` tiers all fifteen sources by how much weight their claims can carry, and explicitly flags three that are cited second-hand without verification. Read for mechanism, discount conclusions, verify by ablation.
+Each lesson separates **measured findings** from **working heuristics** (flagged as such). `sources.html` tiers all sources by how much weight their claims can carry, and explicitly flags three cited second-hand without verification. Read for mechanism, discount conclusions, verify by ablation.
 
-Principal sources: Vivek Trivedy (LangChain), Anthropic Engineering, Birgitta Böckeler (martinfowler.com), Addy Osmani, HumanLayer, Hugo Bowne-Anderson, He et al. (Preprints.org 202603.1756).
+**Principal practitioner sources:** Vivek Trivedy (LangChain), Anthropic Engineering, Birgitta Böckeler (martinfowler.com), Addy Osmani, HumanLayer, Hugo Bowne-Anderson, He et al. (Preprints.org 202603.1756).
+
+**2026 research papers (Part II):**
+- Zhong & Zhu, *AI Harness Engineering* — arXiv:2605.13357 (the H0–H3 ladder, eleven responsibilities)
+- Lin et al., *Agentic Harness Engineering* — arXiv:2604.25850 (AHE, three observability pillars; pass@1 69.7%→77.0%)
+- Chen et al., *HarnessX* — arXiv:2606.14249 (composable + adaptive + evolvable; +14.5% avg)
+- Macedo, *What makes a harness a harness* — arXiv:2606.10106 (constitutive definition)
+- Microsoft Agent Framework — https://github.com/microsoft/agent-framework (compaction, todo, file memory, OTEL, shell, background agents)
+
+> I read the abstracts and the Microsoft page, not every full PDF, and say so in the lessons. The exact Terminal Bench ranks (~#33 vs ~#5) are approximate — I did not verify them on the leaderboard directly; the magnitude is corroborated independently. Leader quotes (Osmani, Karpathy) are real posts read from public profiles on 02 Aug 2026 and linked.
 
 ## The through-line
 

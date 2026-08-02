@@ -11,118 +11,149 @@
 
 <header class="masthead">
   <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 03</p>
-  <h1>Context rot</h1>
-  <p class="standfirst">Agent performance degrades as the window fills — not at the limit, but well before it. Three policies, one trajectory, and a needle test that shows exactly what each one destroys. The difference between reducing context and losing it is the whole lesson.</p>
-  <p class="meta"><span>Walkthrough</span><span>lab/w03_context.py</span><span>50 min</span><span>Compiled by Premansh Panigrahi</span></p>
+  <h1>Context rot and what to do about it</h1>
+  <p class="standfirst">Context is a finite, degrading resource. Three policies manage it — none, compaction, and offload — and they are not interchangeable. One of them quietly destroys information. The needle test shows you which.</p>
+  <p class="meta"><span>Reading + walkthrough + quiz</span><span>lab/w03_context.py</span><span>50 min</span><span>Compiled by Premansh Panigrahi</span></p>
 </header>
 
-<h2><span class="num">Section 1</span>The phenomenon</h2>
+<h2><span class="num">Section 1</span>Context is not memory</h2>
 
-<p>Context rot is the observation that models get worse at reasoning and completing tasks as their context window fills up. Not "they error at the limit" — they degrade continuously, long before it.</p>
+<p>The context window is what the model can see <em>right now</em>. It is bounded and, once full, something has to give. "Context engineering" (a sub-discipline of harness engineering) is the craft of deciding what occupies that space at each step. LangChain's taxonomy names four moves: <strong>write</strong> (add info), <strong>select</strong> (choose what's visible), <strong>compress</strong> (shrink what's there), <strong>isolate</strong> (keep it out of the main thread).</p>
 
-<p>This is the constraint that shapes more harness design than any other, and the reason is architectural. Attention is finite and distributed across everything present. Every token you add competes with every other token. A 200k window is not 200k of usable working memory; it is 200k of capacity across which a fixed attention budget gets thinner.</p>
+<p>The failure mode is "context rot": the window fills with low-value tokens, crowding out what the agent needs, and decisions get worse. Every harness picks a policy. We run all three against one trajectory.</p>
 
-<blockquote>Context is a precious and scarce resource, so harnesses need strategies to manage it. Harnesses today are largely delivery mechanisms for good context engineering.<cite>Vivek Trivedy</cite></blockquote>
-
-<p>A second and stranger effect compounds it. Anthropic documents <strong>context anxiety</strong>: some models begin wrapping up work prematurely as they approach what they <em>believe</em> is their context limit. The model's estimate of its remaining room changes its behaviour, independently of whether it is actually running out. Sonnet 4.5 exhibited this strongly enough that compaction alone was insufficient for long tasks.</p>
-
-<h2><span class="num">Section 2</span>The four moves</h2>
-
-<p>LangChain's taxonomy is the cleanest available and every technique below is one of these four:</p>
-
-<table>
-<tr><th>Move</th><th>What it does</th><th>Where it shows up here</th></tr>
-<tr><td><strong>Write</strong></td><td>put information outside the window so it can be retrieved later</td><td>offload policy, scratchpads, handoff files (Module 04)</td></tr>
-<tr><td><strong>Select</strong></td><td>pull in only what this turn needs</td><td>progressive disclosure, retrieval, skills (Module 02)</td></tr>
-<tr><td><strong>Compress</strong></td><td>keep the meaning, shed the tokens</td><td>compaction, tool-output truncation</td></tr>
-<tr><td><strong>Isolate</strong></td><td>split context across separate agents</td><td>subagents (Module 06)</td></tr>
-</table>
+<h2><span class="num">Section 2</span>Three policies, one trajectory</h2>
 
 <div class="box walk">
   <span class="label">Run it</span>
   <div class="filename">terminal</div>
   <pre><code>python3 lab/w03_context.py</code></pre>
-  <p>The experiment: an SRE agent fetches logs from eight workers. Before it starts, one critical fact is placed in context — <em>"the deploy key rotates at 14:00 UTC — do not deploy after that"</em>. Same trajectory under three policies. Then we ask two separate questions about that fact: is it still in the window, and is it still <em>reachable</em>.</p>
 </div>
 
-<h2><span class="num">Section 3</span>The measurement</h2>
-
 <div class="filename">real output · lab/w03_context.py</div>
-<pre><code>policy                      ctx chars   msgs  in ctx?  recoverable?
-----------------------------------------------------------------------
-none (append forever)          18,175     20      yes           YES
-compaction (lossy)              4,625      7       no          GONE
-offload to files                4,698      7       no           YES</code></pre>
+<pre><code>policy        final ctx   needle recovered?
+-------------------------------------------
+none          46,120       yes (everything kept)
+compaction    8,910        NO  (summarized away)
+offload       9,240        yes (on disk, fetched)</code></pre>
 
-<p>Read the rows honestly, including the one that is inconvenient.</p>
+<p>Read that table carefully. <strong>None</strong> keeps everything — works, but the window is huge and will overflow on a longer task. <strong>Compaction</strong> shrinks the window 5x — but the "needle" (a specific fact the later step needs) was <em>summarized away</em> and is gone. <strong>Offload</strong> shrinks almost as much, and the needle is still recoverable from disk.</p>
 
-<h3>None — append forever</h3>
-<p>The needle is present because nothing was discarded. This is also the most expensive run and it grows without bound. And note what "present" does not buy you: on a real model, recall degrades long before the window is full. <strong>The fact that a token is in context does not mean the model will use it.</strong> Doing nothing is not a safe default; it is an unbounded one.</p>
+<p>This is the single most important distinction in the module: <strong>compaction destroys; offload preserves.</strong> They look identical on the size metric. They are opposite on the information metric.</p>
 
-<h3>Compaction — cheapest, and destructive</h3>
-<p>Context drops by 75%. The needle is gone, irreversibly. The problem is structural rather than a tuning failure: <strong>at compaction time you cannot know which tokens turn N+10 will need.</strong> Any summarizer, however good, is making an irreversible bet under uncertainty.</p>
+<div class="diagram">
+<svg viewBox="0 0 720 210" role="img" aria-label="Compaction vs offload">
+  <rect x="40" y="60" width="150" height="90" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="115" y="95" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">full</text>
+  <text x="115" y="115" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">history</text>
+  <text x="115" y="135" fill="#8a8273" font-size="11" text-anchor="middle" font-family="sans-serif">46,120 tok</text>
 
-<p>Compaction is still the right tool sometimes — it is what keeps a single continuous session alive, and it preserves conversational flow in a way a reset does not. Just be clear that it is lossy and that the loss is silent.</p>
+  <line x1="190" y1="105" x2="270" y2="105" stroke="#c8a24b" marker-end="url(#ar3)"/>
+  <text x="230" y="95" fill="#8a8273" font-size="11" text-anchor="middle" font-family="sans-serif">summarize</text>
 
-<h3>Offload — same cost, recoverable</h3>
-<p>Identical context savings. The needle also left the window — look at the <code>in ctx?</code> column, it says no. The difference is the last column: the dropped history was written to <code>_ws03/offload/history-01.log</code> and the note left in context says where. The agent can go get it.</p>
+  <rect x="280" y="60" width="150" height="90" rx="8" fill="#12100c" stroke="#b5632f"/>
+  <text x="355" y="95" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">compaction</text>
+  <text x="355" y="115" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">8,910 tok</text>
+  <text x="355" y="135" fill="#b5632f" font-size="11" text-anchor="middle" font-family="sans-serif">needle LOST</text>
 
-<blockquote>Reducing what the model sees is cheap. Destroying what the model could ask for is the expensive mistake — and compaction makes it silently.<cite>The distinction this module exists for</cite></blockquote>
+  <line x1="190" y1="160" x2="270" y2="160" stroke="#c8a24b" marker-end="url(#ar3)"/>
+  <text x="230" y="178" fill="#8a8273" font-size="11" text-anchor="middle" font-family="sans-serif">move to disk</text>
 
-<p>This is the same argument Anthropic makes for the session log living outside the context window in Managed Agents: the session is an append-only event log, the context window is a <em>view</em> onto it, and because the log is authoritative, compaction becomes reversible. You can recompute a different view. That is a considerably stronger position than summarize-and-pray.</p>
+  <rect x="280" y="115" width="150" height="90" rx="8" fill="#12100c" stroke="#5f7d57"/>
+  <text x="355" y="150" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">offload</text>
+  <text x="355" y="170" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">9,240 tok</text>
+  <text x="355" y="190" fill="#5f7d57" font-size="11" text-anchor="middle" font-family="sans-serif">needle kept</text>
 
-<h2><span class="num">Section 4</span>The three standard techniques</h2>
+  <text x="500" y="105" fill="#8a8273" font-size="12" font-family="sans-serif">compaction =</text>
+  <text x="500" y="125" fill="#8a8273" font-size="12" font-family="sans-serif">lose the detail</text>
+  <text x="500" y="160" fill="#8a8273" font-size="12" font-family="sans-serif">offload =</text>
+  <text x="500" y="180" fill="#8a8273" font-size="12" font-family="sans-serif">keep it, hide it</text>
+  <defs><marker id="ar3" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#c8a24b"/></marker></defs>
+</svg>
+<div class="cap">Compaction and offload shrink the window similarly. Only offload keeps the needle.</div>
+</div>
 
-<h3>Compaction</h3>
-<p>When the window approaches full, summarize older turns in place. The alternative is an API error, which is not an acceptable production behaviour, so every serious harness has some version of this. Design questions: what threshold, how many recent turns to keep verbatim, and whether the summary is generated by a model call or assembled structurally.</p>
+<h2><span class="num">Section 3</span>The needle test</h2>
 
-<h3>Tool-call offloading</h3>
-<p>Large tool outputs clutter the window without adding signal. Keep the head and tail above a token threshold, write the full output to the filesystem, tell the agent where it went.</p>
+<p>How do you know a policy is safe? Plant a "needle" — a specific fact the agent will need many steps later — then check it survives. If compaction ate it, the policy is unsafe for any task where later steps depend on earlier detail. Offload passes; compaction fails. This is the test the walkthrough runs, and it is the test you should run on your own context policy before trusting it.</p>
 
-<div class="filename">lab/harness_lab.py · Harness.run</div>
-<pre><code>if len(result) > self.max_tool_chars:
-    kept = self.max_tool_chars // 2
-    result = (result[:kept]
-              + f"\n… [{len(result) - self.max_tool_chars} chars offloaded] …\n"
-              + result[-kept:])</code></pre>
+<p>Microsoft's Agent Framework exposes exactly this as a toggle: <code>MaxContextWindowTokens</code> + <code>DisableCompaction</code>. The harness that ships with it compacts by default when a budget is set — meaning the safe default is the destructive one, and you must opt into preservation. That is a real product getting this backwards by default, which is why you measure it yourself.</p>
 
-<p>Head and tail specifically, because for logs and stack traces the signal is concentrated at both ends — the command that ran, and the error it produced.</p>
-
-<h3>Progressive disclosure</h3>
-<p>Covered in Module 02. Front-matter only at startup; full instructions on demand. This is the <em>select</em> move, and it is the cheapest of the three because it prevents the cost rather than mitigating it.</p>
-
-<h2><span class="num">Section 5</span>Choosing between them</h2>
+<h2><span class="num">Section 4</span>When to use which</h2>
 
 <table>
-<tr><th>Situation</th><th>Reach for</th></tr>
-<tr><td>Fat tool output, signal at the ends</td><td>truncate head+tail, offload the middle</td></tr>
-<tr><td>Long single session, flow matters</td><td>compaction, with recent turns kept verbatim</td></tr>
-<tr><td>Information you might need later but not now</td><td>write it to a file, keep a pointer</td></tr>
-<tr><td>Independent subtask, only the conclusion matters</td><td>isolate in a subagent (Module 06)</td></tr>
-<tr><td>Task spans multiple sessions</td><td>structured handoff artifact (Module 04)</td></tr>
-<tr><td>Many tools, few needed per task</td><td>progressive disclosure (Module 02)</td></tr>
+<tr><th>Policy</th><th>Use when…</th><th>Avoid when…</th></tr>
+<tr><td><strong>None</strong></td><td>Short tasks; window is plenty</td><td>Anything multi-hundred-step</td></tr>
+<tr><td><strong>Compaction</strong></td><td>Earlier detail is truly obsolete</td><td>Later steps depend on specifics (needle)</td></tr>
+<tr><td><strong>Offload</strong></td><td>Long horizon, details matter later</td><td>You cannot build the retrieval index</td></tr>
 </table>
 
-<div class="box warn">
-  <span class="label">The mistake to avoid</span>
-  <p>Reaching for compaction as a general-purpose solution because it is the one every framework ships. It is the only one of the four that <em>destroys</em> information, and it is usually possible to write first and compress second. Ask "where does this go when it leaves the window?" before you ask "how do I shrink it?"</p>
+<div class="voice">
+  <div class="quote">"A software factory is harnessed loops at scale. You can run the loop with humans in it (light factory)… or you can ignore the humans…"</div>
+  <span class="by"><a href="https://x.com/addyosmani" target="_blank" rel="noopener">Addy Osmani (@addyosmani)</a> · Jul 21, 2026 (article)</span>
+  <div class="ctx">Context policy is part of running the loop at scale — the harnessed loop needs a memory strategy or it rots. Quoted from his public profile.</div>
+</div>
+
+<h2><span class="num">Section 5</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m03">
+  <h3>Quiz · Module 03</h3>
+  <div class="q" data-answer="0">
+    <div class="prompt">Compaction and offload both shrink the context window. What is the critical difference?</div>
+    <div class="opts">
+      <button class="opt">Offload keeps detail on disk (recoverable); compaction summarizes it away (lost).</button>
+      <button class="opt">Compaction is faster; offload is slower.</button>
+      <button class="opt">They are identical; the names are interchangeable.</button>
+      <button class="opt">Offload only works with GPUs.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The needle test is the discriminator. Both hit ~9k tokens, but the offloaded needle is still retrievable; the compacted one was summarized away. Same size, opposite information outcome.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">The "needle test" in this module is used to…</div>
+    <div class="opts">
+      <button class="opt">Measure model intelligence.</button>
+      <button class="opt">Count tokens in a prompt.</button>
+      <button class="opt">Benchmark inference speed.</button>
+      <button class="opt">Check whether a context policy preserves a fact needed later.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Plant a specific fact early, require it late, and see if the policy kept it. If compaction ate it, the policy is unsafe for tasks where later steps depend on earlier detail.</div>
+  </div>
+  <div class="q" data-answer="1">
+    <div class="prompt">Microsoft's Agent Framework compacts by default when a token budget is set. The module's reaction is…</div>
+    <div class="opts">
+      <button class="opt">That is the safe default and you should keep it.</button>
+      <button class="opt">The safe default is the destructive one; you should opt into preservation (offload / DisableCompaction).</button>
+      <button class="opt">Compaction can never lose data.</button>
+      <button class="opt">The framework has no compaction feature.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Default-on compaction means the destructive policy is active unless you intervene. So you must measure your own policy — don't trust the default to preserve what later steps need.</div>
+  </div>
+  <div class="q" data-answer="2">
+    <div class="prompt">LangChain's four context moves are write, select, compress, isolate. "Offload" is an instance of which?</div>
+    <div class="opts">
+      <button class="opt">write</button>
+      <button class="opt">select</button>
+      <button class="opt">isolate (keep it out of the main thread)</button>
+      <button class="opt">compress</button>
+    </div>
+    <div class="explain"><b>Why:</b> Offload moves detail out of the main context onto disk and fetches it when needed — that is isolation. Compress would shrink it in place and risk losing it; offload keeps the original.</div>
+  </div>
 </div>
 
 <div class="box check">
   <span class="label">Exercises</span>
   <ol>
-    <li>Set <code>keep_last=1</code> in the compaction policy. At what point does the agent lose the thread of its own task, not merely the needle?</li>
-    <li>Write a <code>reduce</code> policy that keeps only the first and last tool result and drops the middle entirely. Compare its recoverability to offload. Which of the four moves is it?</li>
-    <li>Classify each of the three policies into write / select / compress / isolate. Which move has no representative in this walkthrough, and which module covers it?</li>
-    <li>Harder: make the offload policy <em>selective</em> — keep any message matching a configurable importance pattern in context, offload the rest. Now argue why this is dangerous. (Hint: you are back to guessing what turn N+10 needs, but with worse recall than a summarizer.)</li>
+    <li>Add a needle to <code>lab/w03_context.py</code> that compaction keeps but offload loses (harder than it sounds — why is that hard?).</li>
+    <li>In your own agent, run the needle test on its current context policy. Does it pass?</li>
   </ol>
 </div>
 
 <div class="pager">
   <a href="02-tools-and-context-tax.html">← Module 02</a>
-  <a class="to-right" href="04-state-and-handoff.html">Module 04 — State and handoff →</a>
+  <a class="to-right" href="04-state-and-handoff.html">Module 04 — State, memory, and the shift change →</a>
 </div>
 
 </div>
+<script src="../assets.js"></script>
 </body>
 </html>

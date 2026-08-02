@@ -12,160 +12,175 @@
 <header class="masthead">
   <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 01</p>
   <h1>The loop is the agent</h1>
-  <p class="standfirst">An agent is twelve lines of code. Everything hard about agents is a failure mode of those twelve lines, and every harness feature you will ever build is a patch on one of them. Start by writing it, then break it deliberately.</p>
-  <p class="meta"><span>Walkthrough</span><span>lab/w01_loop.py</span><span>40 min</span><span>Compiled by Premansh Panigrahi</span></p>
+  <p class="standfirst">Everything else in a harness is support for one thing: a loop that calls the model, runs what it asks for, feeds the result back, and decides whether to stop. Get the loop wrong and no amount of tooling saves you. Build it in twelve lines, then break it three ways.</p>
+  <p class="meta"><span>Reading + walkthrough + quiz</span><span>lab/w01_loop.py</span><span>45 min</span><span>Compiled by Premansh Panigrahi</span></p>
 </header>
 
-<h2><span class="num">Section 1</span>The whole idea</h2>
+<h2><span class="num">Section 1</span>What an agent is, in one sentence</h2>
 
-<p>Simon Willison's definition is the most compressed one available and it is correct: an agent is a system that <strong>runs tools in a loop to achieve a goal</strong>. Written out:</p>
+<p>An agent is a model wrapped in a loop. The model alone generates text. The loop is what lets it <em>act</em>: call a tool, observe the result, decide the next step, and stop when the job is done. Strip the loop and you have a chatbot. Add the loop and you have something that can complete a task over many steps without a human in the middle of each one.</p>
 
-<div class="filename">lab/w01_loop.py · the core</div>
-<pre><code>def minimal_loop(model, tools, task, max_steps=10):
-    messages = [{"role": "user", "content": task}]
-    for _ in range(max_steps):
-        out = model.complete(messages)
-        if out["type"] == "text":
-            return out["text"]
-        result = tools[out["name"]](**out.get("args", {}))
-        messages.append({"role": "assistant", "content": f"call {out['name']}"})
-        messages.append({"role": "tool", "content": str(result)})
-    return "STOPPED: step budget exhausted"</code></pre>
+<p>This is the definitional claim of the whole field, and it is worth sitting with because it demotes the model. The model is necessary but not sufficient. The thing that makes the system an <em>agent</em> is the harness around it — and the loop is the first layer of that harness.</p>
 
-<p>That is a ReAct loop: reason, act, observe, repeat. It is genuinely all there is to the control flow. If you have been treating agent frameworks as containing some essential complexity, this is the moment to notice that they do not.</p>
+<div class="voice">
+  <div class="quote">"Loops, harnesses, factories and why engineers need to own the outer loop."</div>
+  <span class="by"><a href="https://x.com/addyosmani" target="_blank" rel="noopener">Addy Osmani (@addyosmani)</a> · Jul 21, 2026</span>
+  <div class="ctx">Directly on-topic: the loop is the outer boundary engineers must own. Read on his public profile.</div>
+</div>
+
+<h2><span class="num">Section 2</span>The loop, in twelve lines</h2>
+
+<p>Here is the entire agent. No tools, no context policy, no safety — just the irreducible core:</p>
+
+<pre><code>def agent(model, task, max_steps=10):
+    msgs = [{"role": "user", "content": task}]
+    for step in range(max_steps):
+        out = model.complete(msgs)            # 1. ask the model
+        if out["type"] == "text":             # 2. is it done?
+            return out["text"]                #    yes -> stop
+        if out["type"] == "tool_call":        # 3. or does it want to act?
+            result = run_tool(out["name"], out["args"])
+            msgs.append(out)                  # 4. remember what it asked
+            msgs.append({"role": "tool",      # 5. feed result back
+                         "content": result})
+    return "gave up after " + str(max_steps) + " steps"</code></pre>
+
+<p>Five operations, repeated: <strong>ask → decide → act → observe → append</strong>. That is the whole discipline. Every component added later — tool routing, context windows, verification, permissions — exists to keep this loop correct over a long horizon. None of them change its shape.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 720 220" role="img" aria-label="The agent loop">
+  <defs>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#c8a24b"/>
+    </marker>
+  </defs>
+  <rect x="40" y="80" width="120" height="60" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="100" y="108" fill="#e9e2d0" font-size="15" text-anchor="middle" font-family="sans-serif">task</text>
+  <rect x="220" y="80" width="130" height="60" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="285" y="108" fill="#e9e2d0" font-size="15" text-anchor="middle" font-family="sans-serif">model</text>
+  <rect x="420" y="80" width="130" height="60" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="485" y="108" fill="#e9e2d0" font-size="14" text-anchor="middle" font-family="sans-serif">tool</text>
+  <rect x="600" y="80" width="80" height="60" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="640" y="108" fill="#e9e2d0" font-size="14" text-anchor="middle" font-family="sans-serif">result</text>
+  <line x1="160" y1="110" x2="215" y2="110" stroke="#c8a24b" marker-end="url(#ar)"/>
+  <line x1="350" y1="110" x2="415" y2="110" stroke="#c8a24b" marker-end="url(#ar)"/>
+  <line x1="550" y1="110" x2="598" y2="110" stroke="#c8a24b" marker-end="url(#ar)"/>
+  <path d="M640,140 C640,200 100,200 100,141" fill="none" stroke="#5f7d57" stroke-dasharray="5 5" marker-end="url(#ar)"/>
+  <text x="360" y="195" fill="#8a8273" font-size="13" text-anchor="middle" font-family="sans-serif">append result to history → repeat</text>
+</svg>
+<div class="cap">The irreducible loop: ask → decide → act → observe → append. Everything else wraps this.</div>
+</div>
+
+<h2><span class="num">Section 3</span>Break it three ways</h2>
+
+<p>The walkthrough runs this loop against a scripted model and then removes the three things that make it safe. Read the output and notice <em>which failure mode each removal produces</em> — that mapping is the engineering.</p>
 
 <div class="box walk">
   <span class="label">Run it</span>
   <div class="filename">terminal</div>
-  <pre><code>cd ~/harness-engineering
-python3 lab/w01_loop.py</code></pre>
-  <p>Four sections. The first runs the loop above on <code>(17+25)*3</code> and reports three model calls for one arithmetic question — a useful reminder that every tool call is a full round trip you are paying for in latency and tokens.</p>
+  <pre><code>python3 lab/w01_loop.py</code></pre>
 </div>
 
-<h2><span class="num">Section 2</span>Break it: the loop that never stops</h2>
-
-<p>Feed the loop a model that always returns a tool call and never returns text. With <code>max_steps</code>, you get a clean stop. Without it, the process runs until something external kills it — your budget, your patience, or your rate limit.</p>
-
-<p>This sounds too obvious to dwell on, and yet the interesting part is what the correct behaviour <em>is</em>. When the budget is exhausted, the loop in the walkthrough does not raise. It returns a status:</p>
-
-<pre><code>{"status": "budget_exhausted", "answer": None, "steps": 12}</code></pre>
-
-<p>An exception is the wrong shape here. Hitting a budget ceiling is not an error — it is one of the expected terminal states of an agent run, alongside success and refusal. Anything upstream needs to distinguish "the agent finished and was wrong" from "the agent never finished", and an exception collapses that distinction.</p>
-
-<h4>The stop conditions worth having</h4>
-<ul>
-<li><strong>Step budget</strong> — hard ceiling on iterations. Always. Non-negotiable.</li>
-<li><strong>Wall clock</strong> — for anything long-running. A step budget does not bound a step that hangs.</li>
-<li><strong>Cost ceiling</strong> — dollars, tracked live. The only one that maps to the thing you actually care about.</li>
-<li><strong>No-progress detection</strong> — same tool, same args, N times running. The agent is stuck and does not know it.</li>
-<li><strong>Goal satisfied</strong> — evaluated by the harness, never by asking the agent. See Module 06.</li>
-</ul>
-
-<div class="box warn">
-  <span class="label">Never ask the agent whether it is done</span>
-  <p>The single most reliable way to get a false completion is to ask the model "is the task complete?" It will say yes. Anthropic documents this as a first-class failure mode in long-running work, and it is the mechanism behind Module 04's shift-change problem. Termination is a harness decision, evaluated against artifacts outside the model's control.</p>
-</div>
-
-<h2><span class="num">Section 3</span>Break it: one bad tool kills the run</h2>
-
-<p>Section 3 of the walkthrough gives the loop a tool that raises <code>ValueError("upstream 503")</code>. The raw twelve-line loop propagates it and the run dies. In a real system that is a six-hour job lost to a transient network blip on step 400.</p>
-
-<p>The fix is three lines, and the interesting thing is <em>what</em> those three lines do:</p>
-
-<div class="filename">lab/harness_lab.py · Harness._dispatch</div>
-<pre><code>try:
-    return str(tool.fn(**args))
-except Exception as exc:
-    self.trace.add("tool_error", name=name, error=repr(exc))
-    return f"ERROR from {name}: {exc!r}"</code></pre>
-
-<p>The exception is converted into <strong>an observation</strong>. Not swallowed, not logged and skipped — turned into a string and handed back to the model as the result of its action. Here is the actual trace from section 4:</p>
-
-<div class="filename">real output</div>
-<pre><code>[ 0.000] task  {'text': 'fetch https://x then add 2+2'}
-[ 0.000] tool  fetch({'url': 'https://x'})
-[ 0.000] tool_error {'name': 'fetch', 'error': "ValueError('upstream 503')"}
-[ 0.000]   ->  ERROR from fetch: ValueError('upstream 503')
-[ 0.000] tool  add({'a': 2, 'b': 2})
-[ 0.000]   ->  4
-[ 0.000] say   fetch failed, but 2+2=4 so I proceeded.
-
-status: done   answer: fetch failed, but 2+2=4 so I proceeded.
-
-report:
-  model_calls      3
-  tool_calls       2
-  denied           0
-  errors           1
-  truncations      0
-  context_chars    205</code></pre>
-
-<p>The agent routed around a failure it was told about in plain text. It did not need a retry framework, a circuit breaker, or a special error-handling prompt. It needed the error to arrive somewhere it could read it.</p>
-
-<blockquote>The recovery path is harness code. The model contributed nothing to it — except the ability to read English.<cite>The general principle</cite></blockquote>
-
-<p>This generalises further than error handling. Almost every harness control works better when it is <strong>legible to the agent</strong> rather than merely enforced against it. A blocked command that returns "BLOCKED: rm is not on the allow-list" produces an agent that tries something else. A blocked command that silently returns empty produces an agent that loops in confusion. Module 07 returns to this.</p>
-
-<h2><span class="num">Section 4</span>What the Harness class adds</h2>
-
-<p>The <code>Harness</code> class in <code>lab/harness_lab.py</code> is the twelve-line loop plus every feature this course covers, each one switchable. Read the constructor as a checklist of design decisions:</p>
-
-<div class="filename">lab/harness_lab.py</div>
-<pre><code>Harness(
-    model,
-    tools,
-    system="You are a coding agent.",
-    max_steps=12,            # stop condition — Module 01
-    max_tool_chars=1200,     # context policy — Module 03
-    approve=None,            # permission gate — Module 07
-    hooks=None,              # deterministic control — Module 05
-    context_policy=None,     # compaction / offload — Module 03
-    trace=None,              # observability — this module
-)</code></pre>
-
-<p>Every argument is a lever, and in Module 09 you will turn each one off and measure what breaks. That is the payoff for keeping them explicit rather than baking them in.</p>
-
-<h3>Observability is not optional</h3>
-
-<p>The <code>Trace</code> object is the least glamorous component here and the one you will use most. A harness you cannot inspect is a harness you cannot debug, and agent runs fail in ways that are invisible from the outside — the agent that "worked" but silently truncated a tool result, the agent that hit its step budget one call short of finishing, the agent that called the same tool eleven times.</p>
-
-<p>The minimum viable trace records: every tool call with arguments, every result (truncated for readability), every model text turn, and every intervention the harness made — denials, truncations, hook injections, errors. The <code>report()</code> method rolls that into six numbers. Get in the habit of reading them.</p>
-
-<div class="box evidence">
-  <span class="label">Why a fake model is the right instrument</span>
-  <p>Everything in this course runs against a scripted <code>FakeModel</code>. That is not a limitation of the teaching setup — it is the correct experimental design. You are studying harness behaviour, so the model must be held perfectly constant. A real model introduces run-to-run variance that swamps the effect you are trying to see, and costs money to observe. Script the trajectory, isolate the harness, measure cleanly. Module 09 discusses what changes when you switch to a real model, and what does not.</p>
-</div>
-
-<h2><span class="num">Section 5</span>Where the loop goes next</h2>
-
-<p>The remaining eight modules each attack one property of this loop:</p>
-
+<p>The three breaks:</p>
 <table>
-<tr><th>The loop's problem</th><th>Module</th></tr>
-<tr><td>It can only call tools you gave it, and the tool list costs context</td><td>02</td></tr>
-<tr><td>Every iteration appends, so the window fills and reasoning degrades</td><td>03</td></tr>
-<tr><td>It has no memory once the window is gone</td><td>04</td></tr>
-<tr><td>It cannot tell whether its work is actually correct</td><td>05</td></tr>
-<tr><td>It loses coherence over hundreds of iterations</td><td>06</td></tr>
-<tr><td>It runs arbitrary code with whatever credentials are reachable</td><td>07</td></tr>
-<tr><td>You cannot tell whether your changes to it helped</td><td>08, 09</td></tr>
+<tr><th>Removal</th><th>Failure mode</th><th>Lesson</th></tr>
+<tr><td>No <code>max_steps</code></td><td>Infinite loop — the agent never decides to stop</td><td>Stop conditions are not optional; they are half the loop</td></tr>
+<tr><td>No history append</td><td>Amnesia — the agent re-asks the same tool call forever</td><td>State is what turns a call into a step</td></tr>
+<tr><td>No "is it done?" check</td><td>Run-on text — the agent keeps talking past the goal</td><td>The model will not stop itself; you must decide for it</td></tr>
 </table>
+
+<div class="voice">
+  <div class="quote">"This is a new paradigm for interacting with Claude that is significantly more 'inline' with all the other human activity org-wide. Once you do all of the under the hood engineering work to make this 'just work' (e.g. across tools, integrations, compute environments, memory…"</div>
+  <span class="by"><a href="https://x.com/karpathy" target="_blank" rel="noopener">Andrej Karpathy (@karpathy)</a> · Jun 23, 2026</span>
+  <div class="ctx">Not a harness claim per se — a product comment — but it names the same substrate: tools, integrations, compute, memory. Quoted honestly as a voice on the surrounding engineering, not as a harness definition.</div>
+</div>
+
+<h2><span class="num">Section 4</span>Why the loop's failures are the whole problem</h2>
+
+<p>Notice that none of the three breaks is a <em>model</em> failure. The model did exactly what it was asked. The failures are all in the harness: a missing bound, a missing memory write, a missing stop test. This is the recurring shape of the entire field — capability problems that are actually scaffolding problems. HumanLayer puts the blunt version on record: <em>"It's not a model problem, it's a configuration problem."</em></p>
+
+<p>Concretely, the loop needs four things decided before it touches a real task:</p>
+
+<div class="pipe">
+  <details class="stage" open>
+    <summary><span class="n">1</span>Stop conditions</summary>
+    <div class="sbody">Steps, wall-clock, cost, or an explicit completion signal. Without at least one hard bound, a stuck agent costs you money forever and produces nothing. Module 09 shows a real ablation where removing the step cap let a bare loop run 21.7x the context of the full harness.</div>
+  </details>
+  <details class="stage">
+    <summary><span class="n">2</span>Error recovery</summary>
+    <div class="sbody">A tool fails. Does the loop pass the error back to the model and let it retry, or does it crash? The recovery path is a harness decision, and a bad one turns a recoverable error into a dead agent.</div>
+  </details>
+  <details class="stage">
+    <summary><span class="n">3</span>Append discipline</summary>
+    <div class="sbody">What goes into history and in what shape. Drop the tool result and the agent amnesias; keep everything and you overflow the context window (Module 03). The loop's memory policy is its second-most important decision after stopping.</div>
+  </details>
+  <details class="stage">
+    <summary><span class="n">4</span>Who decides "done"</span></summary>
+    <div class="sbody">The model is a poor judge of its own completion (Module 05). The loop should evaluate completion with something the agent cannot grade — a test, a checker, a human gate.</div>
+  </details>
+</div>
+
+<h2><span class="num">Section 5</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m01">
+  <h3>Quiz · Module 01</h3>
+  <div class="q" data-answer="2">
+    <div class="prompt">What makes a system an "agent" rather than a chatbot, in the framing of this module?</div>
+    <div class="opts">
+      <button class="opt">A bigger or smarter model.</button>
+      <button class="opt">More training data.</button>
+      <button class="opt">A loop that acts on tool results and decides when to stop.</button>
+      <button class="opt">A faster tokenizer.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The model alone only generates text. The loop — ask, act, observe, append, stop — is what turns generation into task completion. That loop is the harness, and it is the definitional layer.</div>
+  </div>
+  <div class="q" data-answer="0">
+    <div class="prompt">You remove the history-append step from the loop. What failure do you expect?</div>
+    <div class="opts">
+      <button class="opt">The agent re-asks the same tool call forever (amnesia).</button>
+      <button class="opt">The agent stops after one step.</button>
+      <button class="opt">The model refuses to reply.</button>
+      <button class="opt">Context window overflow.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Without appending the tool result, the next loop iteration sees the same prompt it started with, so it issues the same call again. State is what converts a call into a step; drop it and the loop spins.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">Which of these is NOT a stop condition the module says you must decide?</div>
+    <div class="opts">
+      <button class="opt">A maximum step count.</button>
+      <button class="opt">A wall-clock or cost bound.</button>
+      <button class="opt">An explicit completion signal.</button>
+      <button class="opt">A minimum model temperature.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Temperature is a generation parameter, not a termination criterion. Steps, wall-clock, cost, and a completion signal are the four stop conditions named; a missing hard bound is what lets a stuck agent loop and burn money.</div>
+  </div>
+  <div class="q" data-answer="1">
+    <div class="prompt">"It's not a model problem, it's a configuration problem" (HumanLayer) applies to the loop failures shown because…</div>
+    <div class="opts">
+      <button class="opt">The model was hallucinating in all three cases.</button>
+      <button class="opt">Each failure came from missing harness logic (bounds, memory, stop test), not from the model.</button>
+      <button class="opt">The model needed more parameters.</button>
+      <button class="opt">The tokenizer was too small.</button>
+    </div>
+    <div class="explain"><b>Why:</b> In every break, the model did exactly what it was asked; the failure was a missing loop decision. That is the field's recurring shape — capability problems that are actually scaffolding problems.</div>
+  </div>
+</div>
 
 <div class="box check">
   <span class="label">Exercises</span>
   <ol>
-    <li>Set <code>max_steps=1</code> in section 4 of the walkthrough. What status comes back? Argue why returning a status is more correct than raising.</li>
-    <li>Add a tool that returns 50,000 characters. Watch <code>truncations</code> go to 1 in the report, then set <code>max_tool_chars=10**9</code> and watch <code>context_chars</code> explode. That is Module 03 previewed in one line.</li>
-    <li>Implement no-progress detection: if the same tool is called with identical arguments three times running, stop with status <code>"stuck"</code>. Roughly six lines in <code>Harness.run</code>.</li>
-    <li>Harder: make the step budget adaptive. Start at 10; if the last three tool calls all succeeded, grant 5 more, up to a hard ceiling of 40. Is this a good idea? Argue both sides — under what failure mode does it make things worse?</li>
+    <li>Hand-trace the twelve-line loop for a task with a deliberate typo in the tool name. Where does it fail, and how would you make that failure recoverable?</li>
+    <li>Add a wall-clock stop to <code>lab/w01_loop.py</code> and confirm a runaway agent dies on time, not on steps.</li>
+    <li>Write, in one sentence, the completion condition for a real task you have. Now ask: can the model itself verify it? If not, what external signal will?</li>
   </ol>
 </div>
 
 <div class="pager">
   <a href="00-what-is-a-harness.html">← Module 00</a>
-  <a class="to-right" href="02-tools-and-context-tax.html">Module 02 — Tools and the context tax →</a>
+  <a class="to-right" href="02-tools-and-context-tax.html">Module 02 — Tools, bash, and the context tax →</a>
 </div>
 
 </div>
+<script src="../assets.js"></script>
 </body>
 </html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>14 · Self-evolving harnesses</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 14 · Research</p>
+  <h1>Self-evolving harnesses</h1>
+  <p class="standfirst">The frontier: harnesses that improve themselves from their own run traces. Two 2026 papers — Agentic Harness Engineering and HarnessX — show evolvable harnesses beating hand-designed ones. This is the stability/adaptability tension (Module 10) resolved in favour of adaptability, with observability as the engine.</p>
+  <p class="meta"><span>Reading + diagram + quiz</span><span>no walkthrough</span><span>50 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The problem with manual harness engineering</h2>
+
+<p>Lin et al. (Agentic Harness Engineering, arXiv:2604.25850) open with why automation is hard: a <strong>heterogeneous action space</strong> across editable components, <strong>voluminous trajectories</strong> that bury signal, and <strong>edits whose effect is hard to attribute</strong>. You tweak a tool, run the agent, get a different number — but which part of the change caused it? Manual iteration drowns in exactly the noise Module 08 warned about.</p>
+
+<h2><span class="num">Section 2</span>AHE: three observability pillars</h2>
+
+<p>Their answer — Agentic Harness Engineering — is a closed loop driven by three matched pillars:</p>
+
+<table>
+<tr><th>Pillar</th><th>What it does</th><th>Why it matters</th></tr>
+<tr><td><strong>Component observability</strong></td><td>Gives every editable component a file-level representation</td><td>The action space becomes explicit and revertible</td></tr>
+<tr><td><strong>Experience observability</strong></td><td>Distills millions of trajectory tokens into a layered, drill-down corpus</td><td>The agent consumes signal, not raw logs</td></tr>
+<tr><td><strong>Decision observability</strong></td><td>Pairs every edit with a self-declared prediction, verified later</td><td>Every edit becomes a falsifiable contract</td></tr>
+</table>
+
+<p>Together they turn editing into a testable hypothesis: "I predict this change lifts pass@1; the next round's outcome confirms or rejects it." That is the ablation method (Module 09) automated and scaled.</p>
+
+<h2><span class="num">Section 3</span>The result, and what it means</h2>
+
+<p>Empirically: ten AHE iterations lifted pass@1 on Terminal-Bench 2 from <strong>69.7% to 77.0%</strong>, surpassing the human-designed Codex-CLI harness (71.9%) and self-evolving baselines. The <em>frozen</em> evolved harness transferred: +5.1 to +10.1pp cross-family gains across three other model families, suggesting the evolved components encode general engineering experience, not benchmark tuning. Ablations localize the gain to <strong>tools, middleware, and long-term memory</strong> — not the system prompt. That last point is the same lesson as Module 09: factual harness structure transfers; prose strategy does not.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 720 180" role="img" aria-label="AHE loop">
+  <rect x="30" y="60" width="130" height="56" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="95" y="82" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">run agent</text>
+  <text x="95" y="100" fill="#8a8273" font-size="10" text-anchor="middle" font-family="sans-serif">→ traces</text>
+  <rect x="210" y="60" width="150" height="56" rx="8" fill="#12100c" stroke="#5f7d57"/>
+  <text x="285" y="82" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">distill to</text>
+  <text x="285" y="100" fill="#8a8273" font-size="10" text-anchor="middle" font-family="sans-serif">evidence corpus</text>
+  <rect x="410" y="60" width="140" height="56" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="480" y="82" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">propose</text>
+  <text x="480" y="100" fill="#8a8273" font-size="10" text-anchor="middle" font-family="sans-serif">edit + predict</text>
+  <rect x="590" y="60" width="110" height="56" rx="8" fill="#12100c" stroke="#5f7d57"/>
+  <text x="645" y="82" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">verify</text>
+  <text x="645" y="100" fill="#8a8273" font-size="10" text-anchor="middle" font-family="sans-serif">vs outcome</text>
+  <line x1="160" y1="88" x2="205" y2="88" stroke="#c8a24b" marker-end="url(#ar14)"/>
+  <line x1="360" y1="88" x2="405" y2="88" stroke="#c8a24b" marker-end="url(#ar14)"/>
+  <line x1="550" y1="88" x2="585" y2="88" stroke="#c8a24b" marker-end="url(#ar14)"/>
+  <path d="M645,116 C645,165 95,165 95,117" fill="none" stroke="#5f7d57" stroke-dasharray="5 5" marker-end="url(#ar14)"/>
+  <defs><marker id="ar14" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#c8a24b"/></marker></defs>
+</svg>
+<div class="cap">The AHE loop: every edit is a prediction, verified against the next round's outcome.</div>
+</div>
+
+<h2><span class="num">Section 4</span>HarnessX: composable + evolvable</h2>
+
+<p>Chen et al. (HarnessX, arXiv:2606.14249) approach from the other side: assemble typed <strong>harness primitives</strong> via a substitution algebra (composable), adapt them through <strong>AEGIS</strong>, a trace-driven multi-agent evolution engine (adaptive), and close the loop by turning trajectories into both harness updates and model-training signal (evolvable). Across five benchmarks it reports an average <strong>+14.5%</strong> gain (up to +44%), largest where baselines are lowest — i.e. evolution helps most when you're worst off.</p>
+
+<p>The two papers agree on the load-bearing insight: <strong>agent progress need not come from model scaling alone</strong>. Composing and evolving the runtime interface from execution feedback is a complementary, actionable lever.</p>
+
+<h2><span class="num">Section 5</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m14">
+  <h3>Quiz · Module 14</h3>
+  <div class="q" data-answer="1">
+    <div class="prompt">AHE's "decision observability" pillar pairs every edit with…</div>
+    <div class="opts">
+      <button class="opt">A human approver.</button>
+      <button class="opt">A self-declared prediction, later verified against outcome.</button>
+      <button class="opt">A random number.</button>
+      <button class="opt">A model version.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Every edit becomes a falsifiable contract — "I predict X." The next round's task-level outcome confirms or rejects it. That is the ablation loop (Module 09) automated.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">Where did AHE's ablations localize the gain?</div>
+    <div class="opts">
+      <button class="opt">The system prompt.</button>
+      <button class="opt">The model weights.</button>
+      <button class="opt">The dataset.</button>
+      <button class="opt">Tools, middleware, and long-term memory — not the prompt.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Same lesson as Module 09: factual harness structure transfers across models; prose-level strategy does not. The evolved components were structural.</div>
+  </div>
+  <div class="q" data-answer="0">
+    <div class="prompt">The frozen AHE harness transferred +5–10pp across other model families, which suggests…</div>
+    <div class="opts">
+      <button class="opt">The gains were general engineering experience, not benchmark tuning.</button>
+      <button class="opt">The benchmark was easy.</button>
+      <button class="opt">The model did all the work.</button>
+      <button class="opt">It only works on one model.</button>
+    </div>
+    <div class="explain"><b>Why:</b> If it were over-fit to one model/benchmark, transfer would fail. Cross-family gain implies the evolved harness structure is broadly useful.</div>
+  </div>
+  <div class="q" data-answer="2">
+    <div class="prompt">HarnessX's AEGIS engine is described as…</div>
+    <div class="opts">
+      <button class="opt">A human review board.</button>
+      <button class="opt">A dataset loader.</button>
+      <button class="opt">A trace-driven multi-agent evolution engine (adaptive).</button>
+      <button class="opt">A tokenizer.</button>
+    </div>
+    <div class="explain"><b>Why:</b> HarnessX = composable (substitution algebra) + adaptive (AEGIS, trace-driven evolution) + evolvable (trajectories become harness updates and training signal).</div>
+  </div>
+</div>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>Take the ablation table from Module 09. Frame each row as an AHE "prediction." What would verification look like across 10 rounds?</li>
+    <li>Read one of the two papers' abstract. Which pillar (component / experience / decision observability) is hardest to build in your own stack?</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="13-evaluation-tooling.html">← Module 13</a>
+  <a class="to-right" href="15-frameworks-compared.html">Module 15 — Frameworks compared →</a>
+</div>
+
+</div>
+<script src="../assets.js"></script>
+</body>
+</html>

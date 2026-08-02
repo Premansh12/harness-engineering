@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10 · Defining the harness (research)</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 10 · Research</p>
+  <h1>Defining the harness</h1>
+  <p class="standfirst">The practitioner's definition (Module 00) said what a harness does. The research literature tries to make that precise — necessary and sufficient conditions, an inclusion/exclusion test, and a boundary against the five things people confuse it with. This module walks the academic definition.</p>
+  <p class="meta"><span>Reading + flip cards + quiz</span><span>no walkthrough</span><span>40 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>Why a precise definition matters</h2>
+
+<p>"Agent harness" circulates widely but loosely. Sometimes it means the whole product (Claude Code). Sometimes the eval scaffold (SWE-bench). Sometimes a framework, an SDK, an IDE plugin, or an orchestrator. Without a reference definition, you cannot compare systems, replicate results, or even argue about them — everyone means a different thing by the same word.</p>
+
+<p>Macedo's 2026 paper, <em>"What makes a harness a harness"</em> (arXiv:2606.10106), sets out to fix this by building a <strong>constitutive definition</strong> — one that states the necessary and sufficient conditions for a system to be an agent harness — and then operationalizing it as an inclusion/exclusion test.</p>
+
+<h2><span class="num">Section 2</span>The genealogy, and why it helps</h2>
+
+<p>The paper reconstructs the term's lineage: the horse's tack → the classic test harness → the ML evaluation harness → the agent harness. The through-line: a harness is something that <em>holds</em> a system in place so you can drive and measure it. The agent harness holds a model so it can act and be evaluated. That etymology is not trivia — it explains why "eval harness" and "agent harness" share a name but are different objects (one measures, one acts).</p>
+
+<h2><span class="num">Section 3</span>The boundary test</h2>
+
+<p>The paper applies its definition to six real systems and to deliberate edge cases, and reports the test "includes and excludes consistently." The five distinctions that matter:</p>
+
+<div class="cards">
+  <div class="card"><div class="term">Agent</div><div class="def">Model + loop + state, acting in an environment. The thing the harness makes possible — not the harness itself.</div></div>
+  <div class="card"><div class="term">Agent SDK</div><div class="def">A library of primitives you assemble. A toolkit you build a harness from, not the runtime.</div></div>
+  <div class="card"><div class="term">Agent Framework</div><div class="def">Opinionated, batteries-included scaffolding. In practice this often IS the harness (LangGraph, Agent Framework).</div></div>
+  <div class="card"><div class="term">Agent Harness</div><div class="def">The runtime that drives the loop, tools, context, safety. The target of the definition.</div></div>
+  <div class="card"><div class="term">Eval harness</div><div class="def">Scaffold that runs an agent against tasks to measure it. Measures, does not act — a different object.</div></div>
+  <div class="card"><div class="term">Orchestrator</div><div class="def">Coordinates multiple agents. Sits above the single-agent harness, not inside it.</div></div>
+</div>
+
+<h2><span class="num">Section 4</span>The research agenda: design tensions</h2>
+
+<p>The paper closes with a research agenda organized by <strong>design-tension axes</strong> — pairs of properties that pull against each other and that any harness must trade off:</p>
+
+<table>
+<tr><th>Tension</th><th>The two pulls</th></tr>
+<tr><td>Generality ↔ Specialization</td><td>One harness for many tasks, vs. a harness tuned to one</td></tr>
+<tr><td>Control ↔ Autonomy</td><td>Human-in-the-loop safety, vs. unattended speed</td></tr>
+<tr><td>Transparency ↔ Performance</td><td>Full traces you can audit, vs. lean context that runs fast</td></tr>
+<tr><td>Stability ↔ Adaptability</td><td>A harness that doesn't drift, vs. one that evolves with the model</td></tr>
+</table>
+
+<p>These axes are the research frontier. Module 15 (self-evolving harnesses) sits squarely on the stability/adaptability axis.</p>
+
+<h2><span class="num">Section 5</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m10">
+  <h3>Quiz · Module 10</h3>
+  <div class="q" data-answer="0">
+    <div class="prompt">Macedo's goal is a "constitutive definition" — meaning it states…</div>
+    <div class="opts">
+      <button class="opt">The necessary and sufficient conditions for a system to be an agent harness.</button>
+      <button class="opt">The best model for agents.</button>
+      <button class="opt">How to train a harness.</button>
+      <button class="opt">A list of popular harnesses.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Constitutive = what makes something that thing. Necessary-and-sufficient conditions let you include and exclude cases consistently, which is what the loose usage lacks.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">Why do "eval harness" and "agent harness" share a name but differ?</div>
+    <div class="opts">
+      <button class="opt">They are the same thing.</button>
+      <button class="opt">One is newer.</button>
+      <button class="opt">One is for models, one for frameworks.</button>
+      <button class="opt">Both "hold" a system to drive/measure it; one measures, the other acts.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The genealogy runs tack → test harness → ML eval harness → agent harness. The shared idea is holding a system in place; the eval harness measures, the agent harness acts.</div>
+  </div>
+  <div class="q" data-answer="1">
+    <div class="prompt">On the stability ↔ adaptability tension, self-evolving harnesses (Module 15) pull toward…</div>
+    <div class="opts">
+      <button class="opt">Stability.</button>
+      <button class="opt">Adaptability.</button>
+      <button class="opt">Neither — they reject the axis.</button>
+      <button class="opt">Transparency.</button>
+    </div>
+    <div class="explain"><b>Why:</b> An evolving harness changes with the model, which is the adaptability end. The tension is that evolution risks drift away from a stable, auditable baseline.</div>
+  </div>
+  <div class="q" data-answer="2">
+    <div class="prompt">Which is the paper's main reason a precise definition is needed?</div>
+    <div class="opts">
+      <button class="opt">To sell more frameworks.</button>
+      <button class="opt">To make models faster.</button>
+      <button class="opt">So systems can be compared, replicated, and argued about consistently.</button>
+      <button class="opt">To replace the loop.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Without a shared definition, "harness" means different things to different authors, and you cannot compare or reproduce work. The definition is an instrument, not a branding exercise.</div>
+  </div>
+</div>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>Read Macedo's abstract (arXiv:2606.10106). Apply his inclusion/exclusion test to a tool you use. Does it pass?</li>
+    <li>Pick one design-tension axis and place three real harnesses (Claude Code, LangGraph, a custom one) on it. Where do they land?</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="09-ablation-and-restraint.html">← Module 09</a>
+  <a class="to-right" href="11-maturity-ladder.html">Module 11 — The H0–H3 maturity ladder →</a>
+</div>
+
+</div>
+<script src="../assets.js"></script>
+</body>
+</html>

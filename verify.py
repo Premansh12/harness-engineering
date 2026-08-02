@@ -43,6 +43,29 @@ for path in sorted(html_files):
     if 'href="../style.css"' not in html and 'href="style.css"' not in html:
         problems.append(f"{rel}: no stylesheet link")
 
+    # quiz / assets wiring for lessons
+    if rel not in ("index.html", "sources.html"):
+        n_quizzes = len(re.findall(r'class="quiz"', html))
+        n_q = len(re.findall(r'class="q"', html))
+        if 'src="../assets.js"' not in html and 'src="assets.js"' not in html:
+            problems.append(f"{rel}: no assets.js script (quizzes won't run)")
+        if n_quizzes == 0 and n_q > 0:
+            problems.append(f"{rel}: has .q blocks but no .quiz wrapper")
+        # validate each answer index is within the option count (per .q block)
+        for qblock in re.findall(r'(<div class="q"[^>]*>.*?)(?=<div class="q"|</div>\s*<div class="quiz"|</div>\s*</div>)', html, re.S):
+            am = re.search(r'data-answer="(\d+)"', qblock)
+            if not am:
+                problems.append(f"{rel}: .q block missing data-answer")
+                continue
+            nopt = len(re.findall(r'class="opt"', qblock))
+            if int(am.group(1)) >= nopt:
+                problems.append(f"{rel}: quiz answer {am.group(1)} out of range for {nopt} options")
+    elif rel == "index.html":
+        if 'id="scoreboard"' not in html:
+            problems.append("index.html: missing #scoreboard mount")
+        if 'src="assets.js"' not in html:
+            problems.append("index.html: no assets.js (progress won't render)")
+
 print(f"html files : {len(html_files)}")
 print(f"checks     : {checked}")
 

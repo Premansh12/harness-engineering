@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>16 · Production security &amp; human-in-the-loop</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 16 · Research</p>
+  <h1>Production security &amp; human-in-the-loop</h1>
+  <p class="standfirst">Module 07 covered the architecture of safety. This module is the production checklist: the controls a deployed harness needs, where humans must stay in the loop, and what "governance" means on the HarnessCard (Module 08).</p>
+  <p class="meta"><span>Reading + checklist + quiz</span><span>no walkthrough</span><span>40 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The production control set</h2>
+
+<p>The roadmap's security section names the controls an advanced harness should include. Mapped to this course:</p>
+
+<table>
+<tr><th>Control</th><th>Module</th><th>What it is</th></tr>
+<tr><td>Permission systems</td><td>02, 07</td><td>Allow-lists; least-privilege tool access</td></tr>
+<tr><td>Human approval checkpoints</td><td>this</td><td>HITL gates on irreversible actions</td></tr>
+<tr><td>Sandboxing</td><td>07</td><td>Confine what a command can reach</td></tr>
+<tr><td>Rollbacks</td><td>this</td><td>Revert a bad change from the trace</td></tr>
+<tr><td>Least-privilege tool access</td><td>07</td><td>Minimum tool/file/secret per task</td></tr>
+<tr><td>Prompt-injection defenses</td><td>07</td><td>Architecture, not prompts (credential proxy)</td></tr>
+<tr><td>Audit logs</td><td>12</td><td>Append-only, attributable, replayable</td></tr>
+</table>
+
+<h2><span class="num">Section 2</span>Where humans stay in the loop</h2>
+
+<p>Not everything needs a human. But three classes of action should gate on a person:</p>
+<ul>
+<li><strong>Irreversible</strong> — deletes, force-pushes, dropped tables. No model decision is final here.</li>
+<li><strong>Externally visible</strong> — sends email, posts, commits to main, charges a card. The blast radius leaves your system.</li>
+<li><strong>High-cost</strong> — spins up expensive compute, calls a paid API at scale.</li>
+</ul>
+
+<p>Microsoft's Agent Framework models this directly: "Don't ask again" standing approval rules plus heuristic auto-approval for safe, unattended execution. The design pattern: default to <em>ask</em>, earn <em>don't-ask</em> per tool through observed safety — the opposite of default-allow.</p>
+
+<h2><span class="num">Section 3</span>Rollback from the trace</h2>
+
+<p>Module 12's append-only log is also your rollback primitive. Because every step is recorded, a bad change can be reverted to the last known-good state by replaying the log minus the offending step. This is why observability and safety are the same subsystem viewed from different ends: the log that lets you <em>attribute</em> a failure also lets you <em>undo</em> it.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 720 160" role="img" aria-label="HITL gate">
+  <rect x="40" y="50" width="160" height="50" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="120" y="80" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">agent wants: delete</text>
+  <rect x="280" y="50" width="160" height="50" rx="8" fill="#12100c" stroke="#b5632f"/>
+  <text x="360" y="72" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">HITL gate</text>
+  <text x="360" y="90" fill="#8a8273" font-size="10" text-anchor="middle" font-family="sans-serif">irreversible?</text>
+  <rect x="520" y="50" width="160" height="50" rx="8" fill="#12100c" stroke="#5f7d57"/>
+  <text x="600" y="80" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">human approves</text>
+  <line x1="200" y1="75" x2="275" y2="75" stroke="#c8a24b" marker-end="url(#ar16)"/>
+  <line x1="440" y1="75" x2="515" y2="75" stroke="#c8a24b" marker-end="url(#ar16)"/>
+  <defs><marker id="ar16" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#c8a24b"/></marker></defs>
+</svg>
+<div class="cap">Irreversible actions route through a human, not the model.</div>
+</div>
+
+<h2><span class="num">Section 4</span>Governance on the card</h2>
+
+<p>The HarnessCard's "Governance" field (Module 08) is where this lives: sandboxing, approvals, provenance logging. If you cannot fill it, your harness is not production-ready by the field's own standard. The research consensus (Zhong &amp; Zhu's intervention recording, Anthropic's audit log, Microsoft's OTEL) is that governance is not a feature you add later — it is part of the runtime from day one, because retrofitting an append-only, attributable log onto a harness that wasn't built for it is painful.</p>
+
+<div class="voice">
+  <div class="quote">"Software quality now depends on the constraints you set around your agents."</div>
+  <span class="by"><a href="https://x.com/addyosmani" target="_blank" rel="noopener">Addy Osmani (@addyosmani)</a> · Jul 30, 2026</span>
+  <div class="ctx">In production, constraints are the governance surface — approvals, least privilege, audit. Read on his public profile.</div>
+</div>
+
+<h2><span class="num">Section 5</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m16">
+  <h3>Quiz · Module 16</h3>
+  <div class="q" data-answer="0">
+    <div class="prompt">Which action class should ALWAYS gate on a human, per this module?</div>
+    <div class="opts">
+      <button class="opt">Irreversible actions (deletes, force-push, drop table).</button>
+      <button class="opt">Read-only file reads.</button>
+      <button class="opt">Any model call.</button>
+      <button class="opt">Token counting.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Irreversible, externally-visible, and high-cost actions route through a person. Reads aren't in that set; gating everything defeats the point of an agent.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">Microsoft's "Don't ask again" + heuristic auto-approval models…</div>
+    <div class="opts">
+      <button class="opt">Default-allow with opt-out.</button>
+      <button class="opt">Random approvals.</button>
+      <button class="opt">No approvals ever.</button>
+      <button class="opt">Default-to-ask; earn don't-ask per tool through observed safety.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The safe default is ask; a tool earns unattended execution by demonstrated safety. The opposite — default-allow — is how agents go rogue.</div>
+  </div>
+  <div class="q" data-answer="1">
+    <div class="prompt">The append-only trace (Module 12) doubles as…</div>
+    <div class="opts">
+      <button class="opt">A model weights file.</button>
+      <button class="opt">A rollback primitive — revert a bad change by replaying minus the step.</button>
+      <button class="opt">A prompt template.</button>
+      <button class="opt">A test suite.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Observability and safety are the same subsystem: the log that attributes a failure also undoes it. That's why governance belongs in the runtime from day one.</div>
+  </div>
+  <div class="q" data-answer="2">
+    <div class="prompt">On the HarnessCard, "Governance" covers…</div>
+    <div class="opts">
+      <button class="opt">Token cost only.</button>
+      <button class="opt">The model name.</button>
+      <button class="opt">Sandboxing, approvals, provenance logging.</button>
+      <button class="opt">The programming language.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Governance is the production-safety field of the card. If you can't fill it, the field's own standard says you're not production-ready.</div>
+  </div>
+</div>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>List the irreversible actions your agent could trigger. Which have a human gate today? Which don't?</li>
+    <li>Fill the Governance field of a HarnessCard for a system you'd actually deploy. Where are the gaps?</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="15-frameworks-compared.html">← Module 15</a>
+  <a class="to-right" href="17-capstone.html">Module 17 — Capstone: build → observe → evaluate → evolve →</a>
+</div>
+
+</div>
+<script src="../assets.js"></script>
+</body>
+</html>

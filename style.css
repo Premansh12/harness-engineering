@@ -312,8 +312,118 @@ td strong { color: var(--ink); }
 .tag.paper   { background: #161c14; color: var(--sage); }
 .tag.code    { background: #1b1a19; color: var(--sand); }
 
+/* ===== Scoreboard (index) ===== */
+.box.scoreboard {
+  border-color: var(--ochre); background: #12100c;
+  font-size: 15px; line-height: 1.5;
+}
+.box.scoreboard strong { color: var(--ochre); font-size: 18px; }
+
+/* ===== Leader-voice callout ===== */
+.voice {
+  border-left: 3px solid var(--ochre);
+  background: #12100c;
+  padding: 18px 22px;
+  margin: 34px 0;
+  border-radius: 0 6px 6px 0;
+}
+.voice .quote { font-size: 19px; line-height: 1.5; font-weight: 600; }
+.voice .by {
+  display: block; margin-top: 10px; font-size: 12px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--sand);
+}
+.voice .by a { color: var(--ochre); text-decoration: none; }
+.voice .ctx {
+  margin-top: 8px; font-size: 13px; color: #8a8273; font-style: italic;
+}
+
+/* ===== Quiz ===== */
+.quiz { margin: 40px 0; border: 1px solid #211d16; border-radius: 10px; overflow: hidden; }
+.quiz > h3 {
+  margin: 0; padding: 16px 20px; background: #12100c;
+  font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ochre);
+}
+.q { padding: 20px; border-top: 1px solid #1c1813; }
+.q .prompt { font-weight: 600; margin-bottom: 14px; font-size: 17px; }
+.q .opts { display: grid; gap: 10px; }
+.q .opt {
+  display: block; text-align: left; cursor: pointer;
+  background: #100e0a; border: 1px solid #241f17; color: var(--text);
+  padding: 12px 15px; border-radius: 8px; font: inherit; font-size: 15px;
+  transition: border-color .15s, background .15s;
+}
+.q .opt:hover { border-color: var(--ochre); }
+.q .opt.correct { border-color: var(--sage); background: #0f140d; }
+.q .opt.wrong   { border-color: #7a2b22; background: #160d0b; }
+.q .opt:disabled { cursor: default; }
+.q .explain {
+  margin-top: 12px; font-size: 14px; line-height: 1.5; color: #b6ad9c;
+  display: none; border-left: 2px solid var(--sage); padding-left: 12px;
+}
+.q .explain.show { display: block; }
+.q .explain b { color: var(--sage); }
+.quiz .scorebar {
+  padding: 16px 20px; border-top: 1px solid #1c1813; background: #12100c;
+  font-size: 15px; font-weight: 600; display: none; align-items: center; gap: 14px;
+}
+.quiz .scorebar.show { display: flex; }
+.quiz .scorebar .pct { color: var(--ochre); font-size: 20px; }
+.quiz .scorebar button {
+  margin-left: auto; background: none; border: 1px solid #2a2419; color: var(--sand);
+  padding: 6px 14px; border-radius: 6px; font: inherit; cursor: pointer;
+}
+
+/* ===== Diagrams (editorial SVG) ===== */
+.diagram { margin: 38px 0; }
+.diagram svg { width: 100%; height: auto; display: block; }
+.diagram .cap {
+  font-size: 13px; color: #8a8273; text-align: center; margin-top: 10px; font-style: italic;
+}
+
+/* ===== Interactive: H-ladder ===== */
+.ladder { display: grid; gap: 10px; margin: 34px 0; }
+.lr {
+  border: 1px solid #241f17; border-radius: 8px; padding: 14px 18px; cursor: pointer;
+  background: #100e0a; transition: border-color .15s, background .15s;
+}
+.lr:hover { border-color: var(--ochre); }
+.lr.open { border-color: var(--sage); background: #0f140d; }
+.lr .lv { font-weight: 700; color: var(--ochre); font-size: 13px; letter-spacing: 0.1em; }
+.lr .ti { font-weight: 600; font-size: 17px; margin: 2px 0 6px; }
+.lr .body { font-size: 14px; line-height: 1.55; color: #b6ad9c; display: none; }
+.lr.open .body { display: block; }
+
+/* ===== Interactive: flip cards (terms) ===== */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 34px 0; }
+.card {
+  border: 1px solid #241f17; border-radius: 8px; padding: 16px; background: #100e0a;
+  cursor: pointer; min-height: 92px; transition: border-color .15s;
+}
+.card:hover { border-color: var(--ochre); }
+.card .term { font-weight: 700; color: var(--ochre); }
+.card .def { font-size: 14px; line-height: 1.5; color: #b6ad9c; margin-top: 8px; display: none; }
+.card.flipped .def { display: block; }
+
+/* ===== Interactive: expandable pipeline ===== */
+.pipe { margin: 34px 0; }
+.stage {
+  border: 1px solid #241f17; border-radius: 8px; margin-bottom: 8px; overflow: hidden;
+}
+.stage > summary {
+  list-style: none; cursor: pointer; padding: 13px 18px; font-weight: 600;
+  background: #100e0a; display: flex; align-items: center; gap: 12px;
+}
+.stage > summary::-webkit-details-marker { display: none; }
+.stage > summary .n {
+  background: var(--ochre); color: #0a0a0a; font-weight: 800; font-size: 12px;
+  width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
+}
+.stage[open] > summary { border-bottom: 1px solid #1c1813; }
+.stage .sbody { padding: 14px 18px 16px; font-size: 14px; line-height: 1.55; color: #b6ad9c; }
+
 @media (max-width: 620px) {
   body { font-size: 17px; }
   .wrap { padding: 0 20px 100px; }
   blockquote { font-size: 20px; }
+  .cards { grid-template-columns: 1fr; }
 }

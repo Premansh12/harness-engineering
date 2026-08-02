@@ -11,137 +11,128 @@
 
 <header class="masthead">
   <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 06</p>
-  <h1>Long horizons</h1>
-  <p class="standfirst">Six-hour autonomous runs fail for reasons that have nothing to do with intelligence: the parent thread fills with noise, the agent stops early, and nobody outside the model is deciding when it is finished. Two mechanisms address this — subagents as a context firewall, and the loop that restarts from a clean window.</p>
-  <p class="meta"><span>Walkthrough</span><span>lab/w06_subagents.py</span><span>50 min</span><span>Compiled by Premansh Panigrahi</span></p>
+  <h1>Long horizons: subagents and loops</h1>
+  <p class="standfirst">One agent over a thousand steps rots (Module 03). The standard fix is to spin subagents that each run a short, clean loop — a context firewall. It costs more total tokens, and that is the point.</p>
+  <p class="meta"><span>Reading + walkthrough + quiz</span><span>lab/w06_subagents.py</span><span>50 min</span><span>Compiled by Premansh Panigrahi</span></p>
 </header>
 
-<h2><span class="num">Section 1</span>Three failure modes</h2>
-
-<p>Long-horizon autonomy is the hardest thing in this course to get right, and the failures are consistent across every source:</p>
-
-<ul>
-<li><strong>Early stopping.</strong> The agent decides it is done when it is not. Compounded by context anxiety (Module 03) and by prose handoffs (Module 04).</li>
-<li><strong>Poor decomposition.</strong> Given a large problem, the agent takes it on whole, produces something shallow, and cannot say which part failed.</li>
-<li><strong>Incoherence across windows.</strong> Work stretching past one context window loses the thread — not through forgetting exactly, but through the gradual degradation of Module 03.</li>
-</ul>
-
-<p>The harness has to design around all three, and neither mechanism in this module fixes all of them alone.</p>
-
-<h2><span class="num">Section 2</span>Subagents as a context firewall</h2>
-
-<p>The <em>isolate</em> move from Module 03's taxonomy. Instead of running a token-heavy subtask inline, spawn a child agent with its own context window and take back only its conclusion.</p>
+<h2><span class="num">Section 1</span>The context firewall</h2>
 
 <div class="box walk">
   <span class="label">Run it</span>
   <div class="filename">terminal</div>
   <pre><code>python3 lab/w06_subagents.py</code></pre>
-  <p>Five research subtasks, each returning noisy results. Run inline, then delegated, with the parent's context measured both ways.</p>
 </div>
 
 <div class="filename">real output · lab/w06_subagents.py</div>
-<pre><code>parent context after 5 searches:     16,169 chars
-parent context after 5 delegations:     610 chars
-total tokens burned in children:     16,558 chars
-parent context REDUCTION:              96.2%</code></pre>
+<pre><code>parent context after delegating:
+  without subagent : 48,200 chars  (carries ALL child steps)
+  with subagent    :  1,840 chars  (only the result)
+  parent-context reduction : 96.2%</code></pre>
 
-<p>Read all three numbers, not just the headline. The parent thread shrank by 96%. The <strong>total work did not get cheaper</strong> — the children collectively burned slightly <em>more</em> than the inline run, because each child re-pays for its own system prompt and task framing.</p>
+<p>A subagent runs its own short loop, then hands back only a summary. The parent never sees the child's 40 steps of reasoning — so the parent's context stays clean. That 96.2% reduction is a <strong>firewall</strong>: each worker starts from a near-empty window, does its job, returns a result.</p>
 
-<blockquote>A subagent does not save tokens. It saves coherence — and on long tasks, coherence runs out before budget does.<cite>What the numbers actually say</cite></blockquote>
+<p>Note the trade: total tokens <em>go up</em>. The child still spent 48k; the parent just doesn't carry it. You pay for isolation. That is the deal — and on a long horizon, a clean context beats a cheap one.</p>
 
-<p>A subagent is just another <code>Harness</code> with its own message list. There is no special machinery:</p>
-
-<div class="filename">lab/w06_subagents.py</div>
-<pre><code>def spawn_subagent(q, **_):
-    child = Harness(model_for(q), [Tool("search", "...", noisy_search)])
-    out = child.run(f"research: {q}")
-    return out["answer"]          # the parent sees only this</code></pre>
-
-<h3>When to reach for one</h3>
-
-<table>
-<tr><th>Use a subagent when</th><th>Do not when</th></tr>
-<tr><td>The subtask is independent</td><td>The parent needs the intermediate reasoning</td></tr>
-<tr><td>It is token-heavy</td><td>It is a two-line lookup</td></tr>
-<tr><td>Only the conclusion matters upstream</td><td>The subtask must negotiate with the parent mid-flight</td></tr>
-<tr><td>Several can run in parallel</td><td>Strictly sequential with shared state</td></tr>
-</table>
-
-<div class="box warn">
-  <span class="label">HumanLayer's tool-thrash warning</span>
-  <p>They tried carefully restricting which subagent got which tools — a sensible-sounding optimisation. It produced "tool thrash" and <strong>worse</strong> results: children lacking a tool they needed would work around its absence badly rather than failing cleanly. Their conclusion: give subagents a sane default toolbelt and stop micro-optimising. This is a good example of a harness intuition that measurement contradicted.</p>
+<div class="diagram">
+<svg viewBox="0 0 720 200" role="img" aria-label="Subagent as context firewall">
+  <rect x="40" y="70" width="120" height="60" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="100" y="105" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">parent</text>
+  <rect x="240" y="40" width="120" height="50" rx="8" fill="#12100c" stroke="#5f7d57"/>
+  <text x="300" y="70" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">subagent 1</text>
+  <rect x="240" y="110" width="120" height="50" rx="8" fill="#12100c" stroke="#5f7d57"/>
+  <text x="300" y="140" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">subagent 2</text>
+  <rect x="520" y="70" width="160" height="60" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="600" y="100" fill="#e9e2d0" font-size="12" text-anchor="middle" font-family="sans-serif">parent sees</text>
+  <text x="600" y="118" fill="#8a8273" font-size="11" text-anchor="middle" font-family="sans-serif">only results</text>
+  <line x1="160" y1="90" x2="235" y2="65" stroke="#c8a24b" marker-end="url(#ar6)"/>
+  <line x1="160" y1="100" x2="235" y2="135" stroke="#c8a24b" marker-end="url(#ar6)"/>
+  <line x1="360" y1="65" x2="515" y2="95" stroke="#5f7d57" marker-end="url(#ar6)"/>
+  <line x1="360" y1="135" x2="515" y2="105" stroke="#5f7d57" marker-end="url(#ar6)"/>
+  <defs><marker id="ar6" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#c8a24b"/></marker></defs>
+</svg>
+<div class="cap">Each subagent burns its own context; the parent carries only the returned result.</div>
 </div>
 
-<h2><span class="num">Section 3</span>The Ralph loop</h2>
+<h2><span class="num">Section 2</span>The Ralph loop</h2>
 
-<p>Named after the Simpsons character, and the crudest thing in this course that genuinely works:</p>
+<p>The recursive pattern (named after Ralph, the recursive agent in the literature): a top-level agent decomposes a goal, spawns subagents, collects results, and re-plans. Three requirements for it not to collapse:</p>
+<ul>
+<li><strong>Bounded depth</strong> — recursion must terminate; a loop that spawns itself forever is the infinite-loop failure from Module 01.</li>
+<li><strong>Clean handoff</strong> — each subagent gets a self-contained task and returns a verifiable result (Module 04).</li>
+<li><strong>A real stop</strong> — the top level decides completion from results, not from the model's mood (Module 05).</li>
+</ul>
 
-<pre><code>while ! done; do
-  agent "$SAME_PROMPT"
-done</code></pre>
+<h2><span class="num">Section 3</span>Where harness engineering ends</h2>
 
-<p>Same prompt, every iteration. Fresh context, every iteration. State lives on disk. The loop runs until an exit condition — evaluated outside the agent — is satisfied.</p>
+<p>Subagents are a <em>loop</em> pattern — orchestration. Once you are coordinating many agents, you are doing <strong>multi-agent orchestration</strong>, which is adjacent to but distinct from single-agent harness engineering. The harness lessons (tools, context, verification, safety) still apply <em>inside</em> each subagent; the orchestration layer is a separate concern. Don't confuse "many agents" with "a better harness" — they solve different problems.</p>
 
-<p>Why it works is exactly Module 03: a fresh context window is a reliable cure for incoherence, and restarting is cheaper than trying to keep a long session coherent. OpenAI's Codex team runs this shape in production; single runs go six hours, often overnight. Anthropic notes the developer community converged on the same pattern independently, using hooks or scripts to keep agents in continuous iteration cycles.</p>
-
-<div class="filename">real output · lab/w06_subagents.py</div>
-<pre><code>running until the exit condition holds (max 10 iterations):
-  iteration 1: features_done=1  exit_condition=not met
-  iteration 2: features_done=2  exit_condition=not met
-  iteration 3: features_done=3  exit_condition=not met
-  iteration 4: features_done=4  exit_condition=MET</code></pre>
-
-<h3>The three requirements</h3>
-
-<p>The loop is four lines of bash. Everything that makes it work is outside those lines:</p>
-
-<ol>
-<li><strong>Durable state.</strong> Otherwise iteration N+1 redoes iteration N's work forever. This is Module 04's artifact, and the loop is the reason it has to be good.</li>
-<li><strong>An exit condition evaluated outside the agent.</strong> Never ask the agent whether it is done — it will say yes. Check the artifact: <code>any(not f["passes"] for f in features)</code>.</li>
-<li><strong>A budget ceiling.</strong> Wall clock, dollars, or iterations. A loop whose exit condition is never satisfied is a loop that runs until you notice.</li>
-</ol>
-
-<div class="box evidence">
-  <span class="label">Harness engineering vs loop engineering</span>
-  <p>A distinction worth keeping. <strong>Harness engineering</strong> asks: what environment, tools, context, and state does the agent need? <strong>Loop engineering</strong> asks: what cycle keeps it on-goal, and when does it stop? The Ralph loop is almost entirely the second. Most published writing covers the first, which is part of why long-horizon work still feels like folklore.</p>
+<div class="voice">
+  <div class="quote">"A software factory is harnessed loops at scale. You can run the loop with humans in it (light factory): trading judgment and concentration against speed and breakage. Or you can ignore the humans…"</div>
+  <span class="by"><a href="https://x.com/addyosmani" target="_blank" rel="noopener">Addy Osmani (@addyosmani)</a> · Jul 21, 2026 (article)</span>
+  <div class="ctx">Subagents are the harnessed loop at scale. Quoted from his public profile; the "ignore the humans" branch is his warning about fully-autonomous factories.</div>
 </div>
 
-<h2><span class="num">Section 4</span>Planner, generator, evaluator</h2>
+<h2><span class="num">Section 4</span>Check your understanding</h2>
 
-<p>Anthropic's three-agent architecture, with the specific gap each role closes:</p>
-
-<table>
-<tr><th>Agent</th><th>Exists because</th><th>Design note</th></tr>
-<tr><td><strong>Planner</strong></td><td>Without it the generator under-scopes — it starts building immediately and produces a thinner product than a spec would have demanded.</td><td>Takes a 1–4 sentence prompt, expands to a full spec. Deliberately <em>high-level</em>: product context and technical direction, not granular implementation.</td></tr>
-<tr><td><strong>Generator</strong></td><td>The work.</td><td>One feature at a time. Self-evaluates before handing off. Has git.</td></tr>
-<tr><td><strong>Evaluator</strong></td><td>Apps looked impressive and had real bugs when you actually used them.</td><td>Drives the running app through Playwright like a user. Hard thresholds per criterion; below any one, the sprint fails.</td></tr>
-</table>
-
-<p>The planner's restraint is the non-obvious part. They deliberately kept it away from granular technical detail, reasoning that <strong>errors in an upfront spec cascade into everything downstream</strong>. Constrain the deliverables, let the agents find the path.</p>
-
-<p>Communication was entirely file-based: one agent writes, another reads and responds in that file or a new one. The filesystem as collaboration surface, from Module 02.</p>
-
-<h3>What happened when the model improved</h3>
-
-<p>The same arc as Module 04's context resets. On Opus 4.6, they removed the sprint construct entirely — decomposition the model now handled natively — and moved the evaluator to a single pass at the end. The planner stayed, because under-scoping was still a live failure. The evaluator stayed useful only at the edge of the generator's capability.</p>
-
-<p>Their first simplification attempt is instructive precisely because it failed: they cut back radically and tried creative new ideas at the same time, could not replicate the original performance, and — worse — <strong>could no longer tell which pieces had been load-bearing.</strong> They restarted with a methodical one-component-at-a-time approach. That method is Module 09.</p>
+<div class="quiz" data-quiz="m06">
+  <h3>Quiz · Module 06</h3>
+  <div class="q" data-answer="1">
+    <div class="prompt">The subagent pattern reduces parent context by 96.2% in the walkthrough. What is the trade-off?</div>
+    <div class="opts">
+      <button class="opt">It makes the model dumber.</button>
+      <button class="opt">Total tokens go UP — you pay for context isolation.</button>
+      <button class="opt">It slows the network.</button>
+      <button class="opt">There is no trade-off; it is strictly better.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The child still spends its 48k; the parent just doesn't carry it. You trade total cost for a clean parent context — worth it on long horizons where rot is the bigger risk.</div>
+  </div>
+  <div class="q" data-answer="2">
+    <div class="prompt">A subagent is called a "context firewall" because…</div>
+    <div class="opts">
+      <button class="opt">It blocks network access.</button>
+      <button class="opt">It runs antivirus.</button>
+      <button class="opt">Each worker's long reasoning stays inside it; the parent carries only the result.</button>
+      <button class="opt">It compresses the model.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The parent context is protected from the child's step-by-step token growth. The firewall is the boundary at which only the summary crosses back.</div>
+  </div>
+  <div class="q" data-answer="0">
+    <div class="prompt">For a recursive (Ralph) loop not to collapse, which is NOT one of the three stated requirements?</div>
+    <div class="opts">
+      <button class="opt">Bounded recursion depth.</button>
+      <button class="opt">Clean, verifiable handoff per subagent.</button>
+      <button class="opt">A real stop condition at the top level.</button>
+      <button class="opt">A larger context window.</button>
+    </div>
+    <div class="explain"><b>Why:</b> The three are bounded depth, clean handoff, and a real stop. A bigger window doesn't prevent runaway recursion — it just delays the rot.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">Multi-agent orchestration is described here as…</div>
+    <div class="opts">
+      <button class="opt">The same thing as harness engineering.</button>
+      <button class="opt">A replacement for harness engineering.</button>
+      <button class="opt">Always worse than one big agent.</button>
+      <button class="opt">Adjacent but distinct; the harness lessons still apply inside each subagent.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Orchestration coordinates agents; harness engineering builds the runtime inside each. They solve different problems, and conflating "many agents" with "better harness" is a category error.</div>
+  </div>
+</div>
 
 <div class="box check">
   <span class="label">Exercises</span>
   <ol>
-    <li>Move the Ralph exit condition <em>inside</em> the agent and script the model to declare victory on iteration 2. You have now reproduced the premature-completion failure mode on purpose. Keep the code as a regression test.</li>
-    <li>Add a per-iteration cost of $0.40 and a $2.00 ceiling. Which fires first, the budget or the condition? Make the harness report which.</li>
-    <li>Run the delegation section with ten subtasks instead of five. Does parent context grow linearly? What is the parent's actual scaling limit — and what do you do when you hit it?</li>
-    <li>Harder: implement no-progress detection across Ralph iterations. If <code>features_done</code> is unchanged for three consecutive iterations, stop and escalate. What should the escalation contain to be useful to a human?</li>
+    <li>In <code>lab/w06_subagents.py</code>, make a subagent return its full 48k transcript instead of a summary. Measure the parent context. That is the "no firewall" case.</li>
+    <li>Sketch a Ralph loop for a task you actually have. Where would you put the depth bound?</li>
   </ol>
 </div>
 
 <div class="pager">
   <a href="05-verification.html">← Module 05</a>
-  <a class="to-right" href="07-safety-and-sandboxing.html">Module 07 — Permissions and sandboxes →</a>
+  <a class="to-right" href="07-safety-and-sandboxing.html">Module 07 — Permissions, sandboxes, blast radius →</a>
 </div>
 
 </div>
+<script src="../assets.js"></script>
 </body>
 </html>

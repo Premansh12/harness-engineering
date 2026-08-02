@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>13 · Evaluation tooling</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 13 · Research</p>
+  <h1>Evaluation tooling</h1>
+  <p class="standfirst">Harness engineering is as much about evaluation as about building. This module surveys the three tools the field points to — LangSmith, harness-evals, Langfuse — and runs a minimal eval you can actually execute, so the shape is clear before you pay for a platform.</p>
+  <p class="meta"><span>Reading + walkthrough + quiz</span><span>lab/w13_eval.py</span><span>45 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The shape all evaluators share</h2>
+
+<p>Every eval framework, commercial or not, has the same skeleton:</p>
+<ul>
+<li><strong>Golden</strong> — what you author: an input, the expected output, optional context.</li>
+<li><strong>Target</strong> — the system under test (your agent).</li>
+<li><strong>Metric</strong> — a function returning a score, usually normalized 0.0–1.0.</li>
+<li><strong>Baseline comparison</strong> — did this version beat the last one?</li>
+</ul>
+
+<p>LangSmith, harness-evals, and Langfuse differ in packaging and where they run, not in this shape. Learn the shape once; the tools are interchangeable front-ends.</p>
+
+<h2><span class="num">Section 2</span>LangSmith</h2>
+
+<p>LangChain's platform for online + offline evaluation. Key ideas from their docs:</p>
+<table>
+<tr><th>Capability</th><th>Note</th></tr>
+<tr><td>Offline + online evals</td><td>Score trajectories, not just final answers</td></tr>
+<tr><td>LLM-as-judge</td><td>Bootstrap labels, then refine with humans</td></tr>
+<tr><td>CI/CD integration</td><td>pytest / Vitest / GitHub workflows; fail the build on score drop</td></tr>
+<tr><td>Dataset from traces</td><td>Capture production, sample into a dataset</td></tr>
+<tr><td>Framework-agnostic</td><td>Not tied to LangChain; SDK sends traces from any stack</td></tr>
+</table>
+
+<h2><span class="num">Section 3</span>harness-evals</h2>
+
+<p>An open-source framework (Apache 2.0) with a distinctive design: every metric belongs to one of <strong>five dimensions</strong>, and any suite auto-produces a radar chart grouped by dimension.</p>
+<table>
+<tr><th>Dimension</th><th>Question</th><th>Examples</th></tr>
+<tr><td>Correctness</td><td>Is it right?</td><td>ExactMatch, TaskCompletion</td></tr>
+<tr><td>Groundedness</td><td>Supported by evidence?</td><td>Faithfulness, ContextPrecision</td></tr>
+<tr><td>Safety</td><td>Violated policy?</td><td>PII, PromptInjection, Hallucination</td></tr>
+<tr><td>Trajectory</td><td>Good path?</td><td>PlanAdherence, StepEfficiency</td></tr>
+<tr><td>Performance</td><td>Fast &amp; cheap?</td><td>Latency, TokenCost</td></tr>
+</table>
+
+<p>Its core concepts map onto the skeleton above: <code>Golden</code> → <code>EvalCase</code> → <code>BaseMetric.measure()</code> → <code>evaluate()</code> → <code>compare_to_baseline()</code>. Safety metrics are reported separately and never averaged — a useful discipline.</p>
+
+<h2><span class="num">Section 4</span>Langfuse</h2>
+
+<p>Langfuse's academy frames evaluation through <strong>experiments</strong>: pick a variable, run your dataset through two versions, compare. Their "where to start" advice is the same as Module 08's: start manual. 20–30 real examples, both conditions, traces side by side, <em>read</em> before you score. Scores then make comparison concrete — win rates, cost/latency tradeoffs. Quality, price, and speed rarely move together; experiments show the pulls in your data.</p>
+
+<div class="box walk">
+  <span class="label">Run it</span>
+  <div class="filename">terminal</div>
+  <pre><code>python3 lab/w13_eval.py</code></pre>
+  <p>A stdlib-only eval runner mirroring the harness-evals shape — golden dataset, target, two metrics, baseline comparison. No platform, no key.</p>
+</div>
+
+<div class="filename">real output · lab/w13_eval.py</div>
+<pre><code>input                  out   exp    exact  numeric
+----------------------------------------------------
+add 2 and 2            4     4      1     1
+what is 10 minus 3     7     7      1     1
+sum 5 and 5            10    10     1     1
+multiply 3 by 4        12    12     1     1
+----------------------------------------------------
+  exact_match : mean=1.00  (n=4)
+  numeric_ok  : mean=1.00  (n=4)
+=== regression vs previous baseline ===
+  exact_match : 0.50 -> 1.00  (IMPROVED)
+  numeric_ok  : 0.50 -> 1.00  (IMPROVED)</code></pre>
+
+<p>The toy target scores perfectly; the point is the <em>instrument</em> — swap <code>TARGET</code> for your real agent and add an LLM-judge metric, and this is the harness-evals shape without the dependency. Per Module 08, run n&gt;1 and report variance before trusting a number.</p>
+
+<h2><span class="num">Section 5</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m13">
+  <h3>Quiz · Module 13</h3>
+  <div class="q" data-answer="0">
+    <div class="prompt">The three tools (LangSmith, harness-evals, Langfuse) differ mainly in…</div>
+    <div class="opts">
+      <button class="opt">Packaging and where they run — the golden/target/metric/baseline shape is shared.</button>
+      <button class="opt">The math of scoring.</button>
+      <button class="opt">Whether they use models.</button>
+      <button class="opt">The programming language.</button>
+    </div>
+    <div class="explain"><b>Why:</b> All three follow golden → target → metric → baseline. Learn that shape and the tools are front-ends; pick by where it runs (self-host, cloud, OSS).</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">harness-evals groups every metric into five dimensions and…</div>
+    <div class="opts">
+      <button class="opt">Averages them all into one score.</button>
+      <button class="opt">Drops safety.</button>
+      <button class="opt">Ignores performance.</button>
+      <button class="opt">Auto-produces a radar chart by dimension; safety is reported separately, never averaged.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Correctness / Groundedness / Safety / Trajectory / Performance. Safety metrics are kept apart so a safe-but-wrong run doesn't get masked by a high average.</div>
+  </div>
+  <div class="q" data-answer="1">
+    <div class="prompt">Langfuse's "where to start" advice matches which earlier module?</div>
+    <div class="opts">
+      <button class="opt">Module 00 (definition).</button>
+      <button class="opt">Module 08 (start manual: 20–30 examples, read traces side by side before scoring).</button>
+      <button class="opt">Module 02 (context tax).</button>
+      <button class="opt">Module 07 (sandbox).</button>
+    </div>
+    <div class="explain"><b>Why:</b> Both say: begin with a small manual comparison, read real outputs, then encode a metric once intuition exists. Scores without reading are easy to misread.</div>
+  </div>
+  <div class="q" data-answer="2">
+    <div class="prompt">In lab/w13_eval.py, what is the minimum change to evaluate a REAL agent instead of the toy?</div>
+    <div class="opts">
+      <button class="opt">Rewrite the metrics.</button>
+      <button class="opt">Change the HTML.</button>
+      <button class="opt">Replace TARGET with your agent and add an LLM-judge metric; keep the skeleton.</button>
+      <button class="opt">Switch to LangSmith only.</button>
+    </div>
+  </div>
+</div>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>Add an LLM-judge metric to <code>lab/w13_eval.py</code> (call a real model; or stub it). Does the numeric score still hold?</li>
+    <li>Pick one platform. What would it take to point its SDK at <code>lab/w01_loop.py</code> as the target?</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="12-observability.html">← Module 12</a>
+  <a class="to-right" href="14-self-evolving.html">Module 14 — Self-evolving harnesses →</a>
+</div>
+
+</div>
+<script src="../assets.js"></script>
+</body>
+</html>

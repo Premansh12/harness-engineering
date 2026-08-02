@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>15 · Frameworks compared</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 15 · Research</p>
+  <h1>Frameworks compared</h1>
+  <p class="standfirst">Don't become dependent on a framework — but understand how each implements the harness concepts. This module compares the major SDKs on the axes that matter (tool execution, memory, planning, runtime loop, state) and says when to use which.</p>
+  <p class="meta"><span>Reading + comparison matrix + quiz</span><span>no walkthrough</span><span>40 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The warning, first</h2>
+
+<p>The roadmap you started from lists eight frameworks (OpenAI Agents SDK, LangGraph, AutoGen, CrewAI, Semantic Kernel, Microsoft Agent Framework, DSPy, LlamaIndex). The caution is the same as Module 09's: frameworks encode assumptions about model weakness that expire. Use them to move fast; don't mistake their defaults for truth; and keep the walkthe-loop skill (Module 01) so you can leave any of them.</p>
+
+<h2><span class="num">Section 2</span>The comparison axes</h2>
+
+<p>Judge a framework on how it handles the concerns this course treats as primary:</p>
+
+<table>
+<tr><th>Axis</th><th>What to check</th><th>From module</th></tr>
+<tr><td>Tool execution</td><td>How tools are declared; allow-list / sandbox support</td><td>02, 07</td></tr>
+<tr><td>Context policy</td><td>Compaction/offload built in? Reversible?</td><td>03</td></tr>
+<tr><td>Memory / state</td><td>Persistence across steps and sessions; handoff shape</td><td>04</td></tr>
+<tr><td>Runtime loop</td><td>Who owns stop conditions; can you customize?</td><td>01</td></tr>
+<tr><td>Verification</td><td>Hooking tests/sensors outside the loop</td><td>05</td></tr>
+<tr><td>Observability</td><td>OTEL traces, replay, attribution</td><td>12</td></tr>
+</table>
+
+<h2><span class="num">Section 3</span>Four representative SDKs</h2>
+
+<div class="cards">
+  <div class="card"><div class="term">OpenAI Agents SDK</div><div class="def">Lightweight, Python-first. Strong on tool-calling loop + handoffs (subagents). Good default if you're already on OpenAI and want minimal scaffolding.</div></div>
+  <div class="card"><div class="term">LangGraph</div><div class="def">Graph-shaped control flow. Explicit state and edges — you own the loop precisely. Best when you need deterministic, inspectable trajectories (Module 12).</div></div>
+  <div class="card"><div class="term">Microsoft Agent Framework</div><div class="def">Batteries-included harness (Module 00's Microsoft doc): compaction, todo, file memory, OTEL, shell, background agents — all toggleable. Closest to a "shipped harness."</div></div>
+  <div class="card"><div class="term">CrewAI / AutoGen</div><div class="def">Multi-agent orchestration first (Module 06's boundary). Role-based crews / conversation patterns. Use when the problem is coordination, not single-agent runtime.</div></div>
+  <div class="card"><div class="term">DSPy</div><div class="def">Programs-as-modules with compiled prompts. Different axis — optimizes the prompt/program, not the runtime. Complementary to harness work.</div></div>
+  <div class="card"><div class="term">LlamaIndex</div><div class="def">Data/retrieval-centric. Strong on the context-engineering (Module 03) and RAG side; harness features are narrower.</div></div>
+</div>
+
+<h2><span class="num">Section 4</span>When to use which</h2>
+
+<table>
+<tr><th>If your problem is…</th><th>Lean toward…</th></tr>
+<tr><td>A custom single-agent runtime you fully control</td><td>LangGraph, or hand-rolled (Module 01)</td></tr>
+<tr><td>Fast start on OpenAI, minimal code</td><td>OpenAI Agents SDK</td></tr>
+<tr><td>Want a shipped harness with toggles</td><td>Microsoft Agent Framework</td></tr>
+<tr><td>Many roles coordinating</td><td>CrewAI / AutoGen (orchestration)</td></tr>
+<tr><td>Retrieval-heavy context</td><td>LlamaIndex</td></tr>
+<tr><td>Prompt/program optimization</td><td>DSPy (complementary)</td></tr>
+</table>
+
+<p>The single most important habit: <strong>keep the twelve-line loop in your head</strong>. Every framework is a decoration on it. When a framework's default fights a lesson in this course (e.g. its compaction is irreversible, or its verification is inside the loop), that's a signal to override it, not to trust it.</p>
+
+<h2><span class="num">Section 5</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m15">
+  <h3>Quiz · Module 15</h3>
+  <div class="q" data-answer="2">
+    <div class="prompt">The module's first warning about frameworks is…</div>
+    <div class="opts">
+      <button class="opt">Use only one framework forever.</button>
+      <button class="opt">Frameworks are always wrong.</button>
+      <button class="opt">Don't become dependent; their defaults encode model assumptions that expire.</button>
+      <button class="opt">Always build from scratch.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Same as Module 09 — framework defaults are bets about model weakness that go stale. Use them to move fast, keep the loop skill so you can leave.</div>
+  </div>
+  <div class="q" data-answer="0">
+    <div class="prompt">You need a deterministic, inspectable single-agent trajectory you fully control. Best lean is…</div>
+    <div class="opts">
+      <button class="opt">LangGraph (explicit state + edges).</button>
+      <button class="opt">CrewAI (roles).</button>
+      <button class="opt">DSPy (optimization).</button>
+      <button class="opt">LlamaIndex (retrieval).</button>
+    </div>
+    <div class="explain"><b>Why:</b> Graph-shaped control flow gives you the loop and state explicitly — exactly what "own the outer loop" (Osmani, Module 01) demands.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">CrewAI / AutoGen are placed under which earlier distinction?</div>
+    <div class="opts">
+      <button class="opt">Context policy.</button>
+      <button class="opt">Verification.</button>
+      <button class="opt">Single-agent harness.</button>
+      <button class="opt">Multi-agent orchestration (Module 06's boundary).</button>
+    </div>
+    <div class="explain"><b>Why:</b> They optimize coordination of roles/agents — the orchestration layer adjacent to, not inside, single-agent harness engineering.</div>
+  </div>
+  <div class="q" data-answer="1">
+    <div class="prompt">If a framework's default compaction is irreversible and its verification runs inside the loop, the module says…</div>
+    <div class="opts">
+      <button class="opt">Trust the default; the framework knows best.</button>
+      <button class="opt">Override it — those defaults fight Modules 03 and 05.</button>
+      <button class="opt">Switch frameworks immediately.</button>
+      <button class="opt">File a bug.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Irreversible compaction violates the needle test (03); in-loop verification violates "agent can't grade itself" (05). A default that breaks a lesson is a signal to override, not to trust.</div>
+  </div>
+</div>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>Take the framework you use. Score it 0–2 on each axis in Section 2. Where are the gaps vs. this course?</li>
+    <li>Rewrite <code>lab/w01_loop.py</code> on top of one SDK (OpenAI Agents or LangGraph). What did the SDK give you, and what did it hide?</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="14-self-evolving.html">← Module 14</a>
+  <a class="to-right" href="16-production-security.html">Module 16 — Production security &amp; HITL →</a>
+</div>
+
+</div>
+<script src="../assets.js"></script>
+</body>
+</html>

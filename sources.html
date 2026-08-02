@@ -13,7 +13,7 @@
   <p class="kicker"><a href="index.html">Harness Engineering</a> · Appendix</p>
   <h1>The source map</h1>
   <p class="standfirst">Every primary source this course was compiled from, annotated with what it is, what to read it for, and how much weight its claims can carry. Retrieved 2 August 2026; full extracted text is in <code>sources/</code>.</p>
-  <p class="meta"><span>15 sources</span><span>~310,000 characters extracted</span><span>Compiled by Premansh Panigrahi</span></p>
+  <p class="meta"><span>~20 sources</span><span>practitioner + 2026 research</span><span>Compiled by Premansh Panigrahi</span></p>
 </header>
 
 <div class="box warn">
@@ -102,6 +102,31 @@
 <p>The only attempt at formalisation I found. Argues harness configuration is a confound in published agent results and proposes a structured disclosure standard.</p>
 <p><strong>Weight:</strong> preprint, not peer reviewed, adoption near zero. The <em>argument</em> is sound; treat the standard as a proposal and a good self-audit.<br>
 <strong>Used in:</strong> Module 08.</p>
+
+<h3>AI Harness Engineering</h3>
+<p class="sources"><span class="tag paper">arXiv</span> Zhong &amp; Zhu · arXiv:2605.13357 · <a href="https://arxiv.org/abs/2605.13357">arxiv.org/abs/2605.13357</a></p>
+<p>The most complete research framing. Relocates the "agents aren't capable enough" gap to the harness, formalizes eleven component responsibilities (task spec, context, tools, memory, state, observability, attribution, verification, permissions, entropy audit, intervention), and proposes the H0–H3 maturity ladder (bare → tool-augmented → verifiable → auditable). Validated via an episode-package evaluation protocol.</p>
+<p><strong>Weight:</strong> preprint, 2026; I read the abstract, not the full PDF. <strong>Used in:</strong> Modules 10, 11.</p>
+
+<h3>Agentic Harness Engineering (AHE)</h3>
+<p class="sources"><span class="tag paper">arXiv</span> Lin et al. · arXiv:2604.25850 · <a href="https://arxiv.org/abs/2604.25850">arxiv.org/abs/2604.25850</a></p>
+<p>A self-evolving harness loop driven by three observability pillars — component, experience, decision. Ten iterations lifted pass@1 on Terminal-Bench 2 from 69.7% to 77.0%, beating the human-designed Codex-CLI harness (71.9%); the frozen evolved harness transferred +5–10pp across three other model families. Ablations localize the gain to tools, middleware, and long-term memory — not the system prompt.</p>
+<p><strong>Weight:</strong> preprint, 2026; abstract read. <strong>Used in:</strong> Module 14.</p>
+
+<h3>HarnessX</h3>
+<p class="sources"><span class="tag paper">arXiv</span> Chen et al. · arXiv:2606.14249 · <a href="https://arxiv.org/abs/2606.14249">arxiv.org/abs/2606.14249</a></p>
+<p>Assembles typed harness primitives via a substitution algebra (composable), adapts them through AEGIS, a trace-driven multi-agent evolution engine (adaptive), and closes the loop by turning trajectories into both harness updates and model-training signal (evolvable). Reports +14.5% average gain (up to +44%) across five benchmarks, largest where baselines are lowest.</p>
+<p><strong>Weight:</strong> preprint, 2026; abstract read. <strong>Used in:</strong> Module 14.</p>
+
+<h3>What makes a harness a harness</h3>
+<p class="sources"><span class="tag paper">arXiv</span> Macedo · arXiv:2606.10106 · <a href="https://arxiv.org/abs/2606.10106">arxiv.org/abs/2606.10106</a></p>
+<p>A constitutive definition — necessary and sufficient conditions for a system to be an agent harness — operationalized as an inclusion/exclusion test. Reconstructs the lineage (tack → test harness → eval harness → agent harness) and closes with a research agenda organized by design-tension axes (generality/specialization, control/autonomy, transparency/performance, stability/adaptability).</p>
+<p><strong>Weight:</strong> preprint, 2026; abstract read. <strong>Used in:</strong> Module 10.</p>
+
+<h3>Microsoft Agent Framework</h3>
+<p class="sources"><span class="tag code">Repo</span> Microsoft · <a href="https://github.com/microsoft/agent-framework">github.com/microsoft/agent-framework</a> · <a href="https://learn.microsoft.com/en-us/agent-framework/">docs</a></p>
+<p>The closest thing to a shipped harness-as-framework: compaction, todo management, file-based memory, OpenTelemetry instrumentation, a shell executor (with a deny-list it explicitly calls "a UX pre-filter, not a security boundary"), and background agents. Useful as a concrete reference for what a harness runtime ships with — and which defaults you must override.</p>
+<p><strong>Weight:</strong> vendor docs; read the overview page, not every sample. <strong>Used in:</strong> Modules 00, 07, 12, 16.</p>
 
 <h3>12-Factor Agents</h3>
 <p class="sources"><span class="tag code">Repo</span> HumanLayer · <a href="https://github.com/humanlayer/12-factor-agents">github.com/humanlayer/12-factor-agents</a></p>

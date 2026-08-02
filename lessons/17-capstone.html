@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>17 · Capstone: build → observe → evaluate → evolve</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 17 · Capstone</p>
+  <h1>Build → observe → evaluate → evolve</h1>
+  <p class="standfirst">The whole course as one loop. Build a harness (Part I), make it observable (M12), evaluate it against a baseline (M08/M13), then evolve it from traces (M14) — and delete what the ablation proves dead (M09). Budget a day.</p>
+  <p class="meta"><span>Capstone + quiz</span><span>lab/w01..w08, w13</span><span>half-day</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The four-phase loop</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 720 200" role="img" aria-label="Capstone loop">
+  <rect x="30" y="70" width="150" height="56" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="105" y="92" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">BUILD</text>
+  <text x="105" y="110" fill="#8a8273" font-size="10" text-anchor="middle" font-family="sans-serif">M00–M09</text>
+  <rect x="230" y="70" width="150" height="56" rx="8" fill="#12100c" stroke="#5f7d57"/>
+  <text x="305" y="92" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">OBSERVE</text>
+  <text x="305" y="110" fill="#8a8273" font-size="10" text-anchor="middle" font-family="sans-serif">M12 traces</text>
+  <rect x="430" y="70" width="150" height="56" rx="8" fill="#12100c" stroke="#c8a24b"/>
+  <text x="505" y="92" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">EVALUATE</text>
+  <text x="505" y="110" fill="#8a8273" font-size="10" text-anchor="middle" font-family="sans-serif">M08/M13</text>
+  <rect x="620" y="70" width="80" height="56" rx="8" fill="#12100c" stroke="#b5632f"/>
+  <text x="660" y="92" fill="#e9e2d0" font-size="13" text-anchor="middle" font-family="sans-serif">EVOLVE</text>
+  <text x="660" y="110" fill="#8a8273" font-size="9" text-anchor="middle" font-family="sans-serif">M14/M09</text>
+  <line x1="180" y1="98" x2="225" y2="98" stroke="#c8a24b" marker-end="url(#ar17)"/>
+  <line x1="380" y1="98" x2="425" y2="98" stroke="#c8a24b" marker-end="url(#ar17)"/>
+  <line x1="580" y1="98" x2="615" y2="98" stroke="#c8a24b" marker-end="url(#ar17)"/>
+  <path d="M660,126 C660,185 105,185 105,127" fill="none" stroke="#5f7d57" stroke-dasharray="5 5" marker-end="url(#ar17)"/>
+  <defs><marker id="ar17" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#c8a24b"/></marker></defs>
+</svg>
+<div class="cap">The capstone is the course as a loop. Each phase feeds the next; the dashed arrow is the deletion step closing it.</div>
+</div>
+
+<h2><span class="num">Section 2</span>Phase checklist</h2>
+
+<table>
+<tr><th>Phase</th><th>Do</th><th>Walkthrough</th></tr>
+<tr><td>BUILD</td><td>Loop + tools (count them) + context policy (offload) + handoff + verification + stop conditions + permission gate</td><td>w01–w08</td></tr>
+<tr><td>OBSERVE</td><td>Append-only trace; token/cost per step; failure attribution</td><td>(add to w01)</td></tr>
+<tr><td>EVALUATE</td><td>Golden dataset + 2 metrics + baseline; run n&gt;1, report variance</td><td>w13</td></tr>
+<tr><td>EVOLVE</td><td>Ablate one component at a time; delete non-load-bearing; re-run; write it down</td><td>w08</td></tr>
+</table>
+
+<h2><span class="num">Section 3</span>The deliverable</h2>
+<p>One page, dated, naming the model version:</p>
+<ul>
+<li>What you built (HarnessCard fields filled).</li>
+<li>What the trace showed (where tokens/cost went; one failure attributed).</li>
+<li>Eval vs baseline (score, variance, delta).</li>
+<li>What you deleted (and what surprised you).</li>
+</ul>
+<p>That document is what you re-run against the next model release — and why deletion (Module 09) is the closing step, not optional cleanup.</p>
+
+<h2><span class="num">Section 4</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m17">
+  <h3>Quiz · Module 17</h3>
+  <div class="q" data-answer="2">
+    <div class="prompt">In the capstone loop, what closes the circle back to BUILD?</div>
+    <div class="opts">
+      <button class="opt">A bigger model.</button>
+      <button class="opt">More tools.</button>
+      <button class="opt">Deleting non-load-bearing components, then rebuilding leaner.</button>
+      <button class="opt">Disabling traces.</button>
+    </div>
+    <div class="explain"><b>Why:</b> EVOLVE = ablate + delete. The deletion step is what returns you to BUILD with a leaner harness — the ratchet turning both ways (Module 09).</div>
+  </div>
+  <div class="q" data-answer="0">
+    <div class="prompt">Why run EVALUATE with n &gt; 1 against a real model?</div>
+    <div class="opts">
+      <button class="opt">Real runs are non-deterministic; one run is an anecdote.</button>
+      <button class="opt">The fake model requires it.</button>
+      <button class="opt">n=1 is forbidden.</button>
+      <button class="opt">It makes the page longer.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Same as Module 08 — variance can swamp a single run's signal. Report variance or you haven't measured.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">OBSERVE feeds EVOLVE because…</div>
+    <div class="opts">
+      <button class="opt">Traces are pretty.</button>
+      <button class="opt">The model reads them.</button>
+      <button class="opt">Observability is required by law.</button>
+      <button class="opt">Attributed traces are the signal self-evolving harnesses consume (Module 14).</button>
+    </div>
+    <div class="explain"><b>Why:</b> AHE (Module 14) turns traces into evolution signal. No observability, no evolution loop — the phases are chained, not independent.</div>
+  </div>
+  <div class="q" data-answer="1">
+    <div class="prompt">The one-page deliverable should name the model version because…</div>
+    <div class="opts">
+      <button class="opt">Marketing.</button>
+      <button class="opt">It is what you re-run the ablation against next release, when assumptions expire (Module 09).</button>
+      <button class="opt">The model cares.</button>
+      <button class="opt">GitHub requires it.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Components encode assumptions about model weakness that expire on a schedule you don't control. Dating it makes the next re-run a diff, not a rebuild.</div>
+  </div>
+</div>
+
+<div class="box check">
+  <span class="label">Your move</span>
+  <ol>
+    <li>Pick a real, small, verifiable task. Run BUILD→OBSERVE→EVALUATE→EVOLVE this week.</li>
+    <li>Keep the one-pager. Open it the next time a model upgrades. That is the whole discipline.</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="16-production-security.html">← Module 16</a>
+  <a class="to-right" href="../sources.html">Appendix — The source map →</a>
+</div>
+
+</div>
+<script src="../assets.js"></script>
+</body>
+</html>

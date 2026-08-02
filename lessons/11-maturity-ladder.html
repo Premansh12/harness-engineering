@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>11 · The H0–H3 maturity ladder</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="kicker"><a href="../index.html">Harness Engineering</a> · Module 11 · Research</p>
+  <h1>The H0–H3 maturity ladder</h1>
+  <p class="standfirst">Zhong &amp; Zhu's "AI Harness Engineering" (arXiv:2605.13357) formalizes the harness as a runtime substrate and proposes an eleven-responsibility model plus a four-level maturity ladder. The ladder is the most useful single idea in the research literature for judging how serious a harness is.</p>
+  <p class="meta"><span>Reading + interactive ladder + quiz</span><span>no walkthrough</span><span>45 min</span><span>Compiled by Premansh Panigrahi</span></p>
+</header>
+
+<h2><span class="num">Section 1</span>The core reframing</h2>
+
+<blockquote>Software-engineering capability emerges from a model-harness-environment system, in which a runtime substrate — the harness — mediates how a foundation-model agent observes a project, acts on it, receives feedback, and establishes that a change is complete.<cite>Zhong &amp; Zhu, AI Harness Engineering (arXiv:2605.13357)</cite></blockquote>
+
+<p>The paper's central move is to relocate the explanatory locus. The dominant story says "models aren't capable enough." Zhong &amp; Zhu say the gap is often in the <strong>harness</strong> — the runtime that mediates observation, action, feedback, and completion. They formalize eleven component responsibilities:</p>
+
+<table>
+<tr><th>#</th><th>Responsibility</th><th>Maps to module</th></tr>
+<tr><td>1</td><td>Task specification</td><td>00, 01</td></tr>
+<tr><td>2</td><td>Context selection</td><td>03</td></tr>
+<tr><td>3</td><td>Tool access</td><td>02</td></tr>
+<tr><td>4</td><td>Project memory</td><td>04</td></tr>
+<tr><td>5</td><td>Task state</td><td>04</td></tr>
+<tr><td>6</td><td>Observability</td><td>12</td></tr>
+<tr><td>7</td><td>Failure attribution</td><td>12</td></tr>
+<tr><td>8</td><td>Verification</td><td>05</td></tr>
+<tr><td>9</td><td>Permissions</td><td>07</td></tr>
+<tr><td>10</td><td>Entropy auditing</td><td>03, 09</td></tr>
+<tr><td>11</td><td>Intervention recording</td><td>07, 12</td></tr>
+</table>
+
+<p>Notice this is the practitioner curriculum, formalized. Modules 00–09 each correspond to one or more of these responsibilities — the research paper is a generalization of the practice.</p>
+
+<h2><span class="num">Section 2</span>The ladder</h2>
+
+<p>The paper operationalizes the harness through a four-level ladder (H0–H3) that "progressively exposes runtime support to the agent." Click each level to expand.</p>
+
+<div class="ladder">
+  <div class="lr">
+    <div class="lv">H0</div>
+    <div class="ti">Bare agent</div>
+    <div class="body">The model plus a minimal loop, no runtime support. Produces only a final patch. No observability, no verification, no memory beyond the window. This is where most "just prompt the model" attempts live — and where the capability gap looks largest, because nothing mediates the model's interaction with the project.</div>
+  </div>
+  <div class="lr">
+    <div class="lv">H1</div>
+    <div class="ti">Tool-augmented</div>
+    <div class="body">Adds tool access and basic context selection. The agent can act on the project and see relevant files. Still no structured verification or failure attribution — so when it fails, you get a broken patch and little signal about why.</div>
+  </div>
+  <div class="lr">
+    <div class="lv">H2</div>
+    <div class="ti">Verifiable</div>
+    <div class="body">Adds verification and failure attribution. The agent now produces reproduction logs and a structured verification report. You can tell whether a change is correct, not just whether it exists. This is the level where "completion" stops being self-asserted (Module 05).</div>
+  </div>
+  <div class="lr">
+    <div class="lv">H3</div>
+    <div class="ti">Auditable / attributed</div>
+    <div class="body">Adds observability, intervention recording, and entropy auditing. Each run becomes an episode package: patch + reproduction log + failure attribution + deterministic requirement check + structured verification. The change is verifiably correct, attributed to causes, and maintainable. This is the paper's target and the capstone's destination (Module 16/17).</div>
+  </div>
+</div>
+
+<p>The paper validates this on a controlled task: lower levels produce "only a final patch," higher levels produce "reproduction logs, failure attributions, deterministic requirement checks, and structured verification reports." The evidence structure varies <em>systematically</em> with harness level — which is exactly the confound Module 08 warns about, made measurable.</p>
+
+<h2><span class="num">Section 3</span>Trace-based evaluation</h2>
+
+<p>The paper's evaluation protocol "converts each agent run into an auditable episode package." That is the research version of the trace we touched in Module 12/14: every run is a record you can replay and attribute. This is also where it connects to the self-evolving work (Module 15) — those systems consume exactly these episode packages as training signal.</p>
+
+<div class="voice">
+  <div class="quote">"Loops, harnesses, factories and why engineers need to own the outer loop."</div>
+  <span class="by"><a href="https://x.com/addyosmani" target="_blank" rel="noopener">Addy Osmani (@addyosmani)</a> · Jul 21, 2026</span>
+  <div class="ctx">The maturity ladder is a way of owning the outer loop deliberately. Quoted from his public profile.</div>
+</div>
+
+<h2><span class="num">Section 4</span>Check your understanding</h2>
+
+<div class="quiz" data-quiz="m11">
+  <h3>Quiz · Module 11</h3>
+  <div class="q" data-answer="2">
+    <div class="prompt">Zhong &amp; Zhu relocate the "agents aren't capable enough" gap to…</div>
+    <div class="opts">
+      <button class="opt">The training data.</button>
+      <button class="opt">The tokenizer.</button>
+      <button class="opt">The harness — the runtime mediating observation, action, feedback, completion.</button>
+      <button class="opt">The GPU.</button>
+    </div>
+    <div class="explain"><b>Why:</b> They argue capability emerges from a model-harness-environment system; the under-built part is usually the harness, not the model weights.</div>
+  </div>
+  <div class="q" data-answer="0">
+    <div class="prompt">On the H-ladder, which level first adds verification and failure attribution?</div>
+    <div class="opts">
+      <button class="opt">H2 (Verifiable)</button>
+      <button class="opt">H0 (Bare)</button>
+      <button class="opt">H1 (Tool-augmented)</button>
+      <button class="opt">They are all present at H0.</button>
+    </div>
+    <div class="explain"><b>Why:</b> H0 = final patch only; H1 = tools + context; H2 = adds verification and failure attribution so completion is no longer self-asserted; H3 = adds observability and audit.</div>
+  </div>
+  <div class="q" data-answer="3">
+    <div class="prompt">The "episode package" evaluation protocol matters because…</div>
+    <div class="opts">
+      <button class="opt">It makes runs faster.</button>
+      <button class="opt">It replaces the model.</button>
+      <button class="opt">It is required by law.</button>
+      <button class="opt">Each run becomes an auditable, attributable record — also usable as evolution signal (Module 15).</button>
+    </div>
+    <div class="explain"><b>Why:</b> Converting a run into an episode package (patch + logs + attribution + verification) makes the confound measurable and doubles as the training data self-evolving harnesses consume.</div>
+  </div>
+  <div class="q" data-answer="1">
+    <div class="prompt">The paper's eleven responsibilities (task spec, context, tools, memory, state, observability, attribution, verification, permissions, entropy audit, intervention) are best understood as…</div>
+    <div class="opts">
+      <button class="opt">A new model architecture.</button>
+      <button class="opt">The practitioner curriculum (Modules 00–09) formalized.</button>
+      <button class="opt">A benchmark dataset.</button>
+      <button class="opt">A list of model weights.</button>
+    </div>
+    <div class="explain"><b>Why:</b> Each responsibility maps to a module in Part I. The research paper generalizes the practice into a responsibility model — useful as a checklist of what a serious harness must do.</div>
+  </div>
+</div>
+
+<div class="box check">
+  <span class="label">Exercises</span>
+  <ol>
+    <li>Place a harness you use on the H0–H3 ladder. What level is it, and what would reaching the next level require?</li>
+    <li>Read Zhong &amp; Zhu's abstract. Which of the eleven responsibilities does your current setup not have?</li>
+  </ol>
+</div>
+
+<div class="pager">
+  <a href="10-defining-the-harness.html">← Module 10</a>
+  <a class="to-right" href="12-observability.html">Module 12 — Observability &amp; tracing →</a>
+</div>
+
+</div>
+<script src="../assets.js"></script>
+</body>
+</html>
